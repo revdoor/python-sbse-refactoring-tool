@@ -42,6 +42,9 @@ class InlineMethodOperator(RefactoringOperator):
         self.target_node_type = NodeType.FunctionDef
         self.target_node_no = target_node_no
 
+    def __str__(self):
+        return f"InlineMethodOperator(target_node_no={self.target_node_no})"
+
 
 class ConsolidateConditionalExpressionOperator(RefactoringOperator):
     pass
