@@ -7,6 +7,7 @@ from enum import Enum
 class RefactoringOperatorType(Enum):
     IM = "InlineMethod"
     DC = "DecomposeConditional"
+    CC = "ConsolidateConditionalExpression"
 
 
 class NodeType(Enum):
