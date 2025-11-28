@@ -49,3 +49,8 @@ class InlineMethodOperator(RefactoringOperator):
 
 class ConsolidateConditionalExpressionOperator(RefactoringOperator):
     pass
+
+
+class ReverseConditionalExpressionOperator(RefactoringOperator):
+    def __init__(self, target_node_no):
+        super().__init__(RefactoringOperatorType.RC, NodeType.If, target_node_no)

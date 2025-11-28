@@ -43,6 +43,8 @@ class CandidateGenerator:
                 return self.generate_decompose_conditional_candidates(source_code)
             case RefactoringOperatorType.IM:
                 return self.generate_inline_method_candidates(source_code)
+            case RefactoringOperatorType.RC:
+                return self.generate_reverse_conditional_expression_candidates(source_code)
             case _:
                 return []
 
@@ -87,5 +89,23 @@ class CandidateGenerator:
                 if len(node.body) == 1:
                     no = order[node]
                     candidates.append(InlineMethodOperator(no))
+
+        return candidates
+
+    @staticmethod
+    def generate_reverse_conditional_expression_candidates(source_code):
+        root = ast.parse(source_code)
+
+        order_visitor = OrderVisitor()
+        order_visitor.visit(root)
+
+        order = order_visitor.node_order
+
+        candidates = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.If):
+                no = order[node]
+                candidates.append(DecomposeConditionalOperator(no))
 
         return candidates
