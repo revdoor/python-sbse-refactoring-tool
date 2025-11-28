@@ -46,7 +46,8 @@ class CandidateGenerator:
             case _:
                 return []
 
-    def generate_decompose_conditional_candidates(self, source_code):
+    @staticmethod
+    def generate_decompose_conditional_candidates(source_code):
         root = ast.parse(source_code)
 
         order_visitor = OrderVisitor()
@@ -68,7 +69,8 @@ class CandidateGenerator:
 
         return candidates
 
-    def generate_inline_method_candidates(self, source_code):
+    @staticmethod
+    def generate_inline_method_candidates(source_code):
         root = ast.parse(source_code)
 
         order_visitor = OrderVisitor()
