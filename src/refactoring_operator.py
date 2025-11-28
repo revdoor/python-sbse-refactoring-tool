@@ -11,6 +11,7 @@ impl order: DC -> IM -> CC -> RNC -> RV / RF -> EM
 
 class NodeType(EnumType):
     FunctionDef = "FunctionDef"
+    If = "If"
 
 
 class RefactoringOperator:
@@ -30,7 +31,9 @@ class RenameFieldOperator(RefactoringOperator):
 
 
 class DecomposeConditionalOperator(RefactoringOperator):
-    pass
+    def __init__(self, target_node_no):
+        self.target_node_type = NodeType.If
+        self.target_node_no = target_node_no
 
 
 class ReplaceNestedConditionalOperator(RefactoringOperator):

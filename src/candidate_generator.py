@@ -5,7 +5,7 @@ for the given source code.
 """
 
 import ast
-from refactoring_operator import InlineMethodOperator
+from refactoring_operator import InlineMethodOperator, DecomposeConditionalOperator
 
 
 class OrderVisitor(ast.NodeVisitor):
@@ -35,6 +35,28 @@ class CandidateGenerator:
         # TODO: Implement candidate generation logic
         # It should find various valid refactoring operators applicable to the source code
         pass
+
+    def generate_decompose_conditional_candidates(self, source_code):
+        root = ast.parse(source_code)
+
+        order_visitor = OrderVisitor()
+        order_visitor.visit(root)
+
+        order = order_visitor.node_order
+
+        candidates = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.If):
+                # consider If nodes with BoolOp of And/Or only
+                # for a valid complex conditional expression
+                # that would be considered as a target for DC operator
+                if isinstance(node.test, ast.BoolOp) and \
+                        (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
+                    no = order[node]
+                    candidates.append(DecomposeConditionalOperator(no))
+
+        return candidates
 
     def generate_inline_method_candidates(self, source_code):
         root = ast.parse(source_code)
