@@ -9,6 +9,7 @@ from type_enums import RefactoringOperatorType
 from refactoring_operator import (
     InlineMethodOperator,
     DecomposeConditionalOperator,
+    ReverseConditionalExpressionOperator,
     ConsolidateConditionalExpressionOperator
 )
 
@@ -154,7 +155,7 @@ class CandidateGenerator:
         for node in ast.walk(root):
             if isinstance(node, ast.If):
                 no = order[node]
-                candidates.append(DecomposeConditionalOperator(no))
+                candidates.append(ReverseConditionalExpressionOperator(no))
 
         return candidates
 
