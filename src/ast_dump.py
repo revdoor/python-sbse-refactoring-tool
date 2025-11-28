@@ -7,12 +7,11 @@ def dump_ast(source_code):
 
 
 if __name__ == '__main__':
-    file_name = 'dump_target_code.py'
+    for operator in ['im', 'dc']:
+        with open(f'dump_target_code/dump_target_code_{operator}.py', 'r') as f:
+            source_code = f.read()
 
-    with open(file_name, 'r') as f:
-        source_code = f.read()
+        ast_representation = dump_ast(source_code)
 
-    ast_representation = dump_ast(source_code)
-
-    with open('ast_output.txt', 'w') as f:
-        f.write(ast_representation)
+        with open(f'ast_output/ast_output_{operator}.txt', 'w') as f:
+            f.write(ast_representation)

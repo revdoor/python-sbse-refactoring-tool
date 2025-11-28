@@ -2,7 +2,7 @@ from candidate_generator import CandidateGenerator
 
 
 if __name__ == "__main__":
-    file = 'dump_target_code.py'
+    file = 'dump_target_code/dump_target_code_im.py'
 
     cg = CandidateGenerator()
 
