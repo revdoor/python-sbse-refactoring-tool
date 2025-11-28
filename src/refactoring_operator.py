@@ -48,7 +48,12 @@ class InlineMethodOperator(RefactoringOperator):
 
 
 class ConsolidateConditionalExpressionOperator(RefactoringOperator):
-    pass
+    def __init__(self, target_node_no, length):
+        super().__init__(RefactoringOperatorType.CC, NodeType.If, target_node_no)
+        self.length = length
+
+    def __str__(self):
+        return f"{self.operator_type.value}(target={self.target_node_type.value}[{self.target_node_no}], length={self.length})"
 
 
 class ReverseConditionalExpressionOperator(RefactoringOperator):
