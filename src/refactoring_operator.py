@@ -3,19 +3,22 @@ This module defines the RefactoringOperator class,
 which are used to represent various refactoring operators that can be used
 in SBSE process.
 """
-from enum import EnumType
 
 """
 impl order: DC -> IM -> CC -> RNC -> RV / RF -> EM
 """
 
-class NodeType(EnumType):
-    FunctionDef = "FunctionDef"
-    If = "If"
+from type_enums import RefactoringOperatorType, NodeType
 
 
 class RefactoringOperator:
-    pass
+    def __init__(self, operator_type, target_node_type, target_node_no):
+        self.operator_type = operator_type
+        self.target_node_type = target_node_type
+        self.target_node_no = target_node_no
+
+    def __str__(self):
+        return f"{self.operator_type.value}(target={self.target_node_type.value}[{self.target_node_no}])"
 
 
 class ExtractMethodOperator(RefactoringOperator):
@@ -32,8 +35,7 @@ class RenameFieldOperator(RefactoringOperator):
 
 class DecomposeConditionalOperator(RefactoringOperator):
     def __init__(self, target_node_no):
-        self.target_node_type = NodeType.If
-        self.target_node_no = target_node_no
+        super().__init__(RefactoringOperatorType.DC, NodeType.If, target_node_no)
 
 
 class ReplaceNestedConditionalOperator(RefactoringOperator):
@@ -42,11 +44,7 @@ class ReplaceNestedConditionalOperator(RefactoringOperator):
 
 class InlineMethodOperator(RefactoringOperator):
     def __init__(self, target_node_no):
-        self.target_node_type = NodeType.FunctionDef
-        self.target_node_no = target_node_no
-
-    def __str__(self):
-        return f"InlineMethodOperator(target_node_no={self.target_node_no})"
+        super().__init__(RefactoringOperatorType.IM, NodeType.FunctionDef, target_node_no)
 
 
 class ConsolidateConditionalExpressionOperator(RefactoringOperator):

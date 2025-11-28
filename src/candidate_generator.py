@@ -5,6 +5,7 @@ for the given source code.
 """
 
 import ast
+from type_enums import RefactoringOperatorType
 from refactoring_operator import InlineMethodOperator, DecomposeConditionalOperator
 
 
@@ -35,6 +36,15 @@ class CandidateGenerator:
         # TODO: Implement candidate generation logic
         # It should find various valid refactoring operators applicable to the source code
         pass
+
+    def generate_candidates_by_operator(self, source_code, operator):
+        match operator:
+            case RefactoringOperatorType.DC:
+                return self.generate_decompose_conditional_candidates(source_code)
+            case RefactoringOperatorType.IM:
+                return self.generate_inline_method_candidates(source_code)
+            case _:
+                return []
 
     def generate_decompose_conditional_candidates(self, source_code):
         root = ast.parse(source_code)

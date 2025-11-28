@@ -1,14 +1,19 @@
 from candidate_generator import CandidateGenerator
+from type_enums import RefactoringOperatorType
 
 
 if __name__ == "__main__":
-    file = 'dump_target_code/dump_target_code_im.py'
-
     cg = CandidateGenerator()
 
-    with open(file, 'r') as f:
-        source_code = f.read()
-        candidates = cg.generate_inline_method_candidates(source_code)
+    for operator in RefactoringOperatorType:
+        print(f"Run for {operator.value}...")
+        file = f'dump_target_code/dump_target_code_{operator.name.lower()}.py'
 
-        for candidate in candidates:
-            print(candidate)
+        with open(file, 'r') as f:
+            source_code = f.read()
+            candidates = cg.generate_candidates_by_operator(source_code, operator)
+
+            for candidate in candidates:
+                print(candidate)
+
+        print()
