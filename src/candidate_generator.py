@@ -124,14 +124,16 @@ class CandidateGenerator:
         candidates = []
 
         for node in ast.walk(root):
-            if isinstance(node, ast.If):
-                # consider If nodes with BoolOp of And/Or only
-                # for a valid complex conditional expression
-                # that would be considered as a target for DC operator
-                if isinstance(node.test, ast.BoolOp) and \
-                        (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
-                    no = node_order[node]
-                    candidates.append(DecomposeConditionalOperator(no))
+            if not isinstance(node, ast.If):
+                continue
+
+            # consider If nodes with BoolOp of And/Or only
+            # for a valid complex conditional expression
+            # that would be considered as a target for DC operator
+            if isinstance(node.test, ast.BoolOp) and \
+                    (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
+                no = node_order[node]
+                candidates.append(DecomposeConditionalOperator(no))
 
         return candidates
 
@@ -169,21 +171,23 @@ class CandidateGenerator:
         candidates = []
 
         for node in ast.walk(root):
-            if isinstance(node, ast.If):
-                branch_infos = find_same_level_ifs(node)
+            if not isinstance(node, ast.If):
+                continue
 
-                # consider only when the first body (If body) is same for consequent branches
-                # how can we save? save as the length of continuous same bodies
-                first_body = branch_infos[0][1]
-                length = 1
-                for cond, body in branch_infos[1:]:
-                    if ast_equal(first_body, body):
-                        length += 1
-                    else:
-                        break
+            branch_infos = find_same_level_ifs(node)
 
-                if length >= 2:
-                    no = node_order[node]
-                    candidates.append(ConsolidateConditionalExpressionOperator(no, length))
+            # consider only when the first body (If body) is same for consequent branches
+            # how can we save? save as the length of continuous same bodies
+            first_body = branch_infos[0][1]
+            length = 1
+            for cond, body in branch_infos[1:]:
+                if ast_equal(first_body, body):
+                    length += 1
+                else:
+                    break
+
+            if length >= 2:
+                no = node_order[node]
+                candidates.append(ConsolidateConditionalExpressionOperator(no, length))
 
         return candidates
