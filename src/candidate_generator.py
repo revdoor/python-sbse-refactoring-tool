@@ -7,6 +7,7 @@ for the given source code.
 import ast
 from type_enums import RefactoringOperatorType
 from refactoring_operator import (
+    RefactoringOperator,
     InlineMethodOperator,
     DecomposeConditionalOperator,
     ReverseConditionalExpressionOperator,
@@ -76,33 +77,50 @@ class OrderVisitor(ast.NodeVisitor):
 
 
 class CandidateGenerator:
-    def generate_candidates(self, source_code):
-        # TODO: Implement candidate generation logic
+    @staticmethod
+    def generate_candidates(source_code: str) -> list[RefactoringOperator]:
         # It should find various valid refactoring operators applicable to the source code
-        pass
+        overall_result = []
 
-    def generate_candidates_by_operator(self, source_code, operator):
+        root, node_order = CandidateGenerator._parse_and_order(source_code)
+
+        for operator in RefactoringOperatorType:
+            candidates = CandidateGenerator._generate_candidates_by_operator(root, node_order, operator)
+            overall_result.extend(candidates)
+
+        return overall_result
+
+    @staticmethod
+    def generate_candidates_by_operator(source_code: str, operator: RefactoringOperatorType) -> list[RefactoringOperator]:
+        root, node_order = CandidateGenerator._parse_and_order(source_code)
+        return CandidateGenerator._generate_candidates_by_operator(root, node_order, operator)
+
+    @staticmethod
+    def _generate_candidates_by_operator(root: ast.Module, node_order: dict[ast.AST, int], operator: RefactoringOperatorType) -> list[RefactoringOperator]:
         match operator:
             case RefactoringOperatorType.DC:
-                return self.generate_decompose_conditional_candidates(source_code)
+                return CandidateGenerator._generate_dc_candidates(root, node_order)
             case RefactoringOperatorType.IM:
-                return self.generate_inline_method_candidates(source_code)
+                return CandidateGenerator._generate_im_candidates(root, node_order)
             case RefactoringOperatorType.RC:
-                return self.generate_reverse_conditional_expression_candidates(source_code)
+                return CandidateGenerator._generate_rc_candidates(root, node_order)
             case RefactoringOperatorType.CC:
-                return self.generate_consolidate_conditional_expression_candidates(source_code)
+                return CandidateGenerator._generate_cc_candidates(root, node_order)
             case _:
                 return []
 
     @staticmethod
-    def generate_decompose_conditional_candidates(source_code):
+    def _parse_and_order(source_code: str) -> tuple[ast.Module, dict[ast.AST, int]]:
         root = ast.parse(source_code)
 
         order_visitor = OrderVisitor()
         order_visitor.visit(root)
 
-        order = order_visitor.node_order
+        return root, order_visitor.node_order
 
+
+    @staticmethod
+    def _generate_dc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RefactoringOperator]:
         candidates = []
 
         for node in ast.walk(root):
@@ -112,20 +130,13 @@ class CandidateGenerator:
                 # that would be considered as a target for DC operator
                 if isinstance(node.test, ast.BoolOp) and \
                         (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
-                    no = order[node]
+                    no = node_order[node]
                     candidates.append(DecomposeConditionalOperator(no))
 
         return candidates
 
     @staticmethod
-    def generate_inline_method_candidates(source_code):
-        root = ast.parse(source_code)
-
-        order_visitor = OrderVisitor()
-        order_visitor.visit(root)
-
-        order = order_visitor.node_order
-
+    def _generate_im_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RefactoringOperator]:
         candidates = []
 
         for node in root.body:
@@ -133,39 +144,25 @@ class CandidateGenerator:
                 # consider functions with single statement only
                 # to handle simple inline method refactoring
                 if len(node.body) == 1:
-                    no = order[node]
+                    no = node_order[node]
                     candidates.append(InlineMethodOperator(no))
 
         return candidates
 
     @staticmethod
-    def generate_reverse_conditional_expression_candidates(source_code):
-        root = ast.parse(source_code)
-
-        order_visitor = OrderVisitor()
-        order_visitor.visit(root)
-
-        order = order_visitor.node_order
-
+    def _generate_rc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RefactoringOperator]:
         candidates = []
 
         for node in ast.walk(root):
             if isinstance(node, ast.If):
-                no = order[node]
+                no = node_order[node]
                 candidates.append(ReverseConditionalExpressionOperator(no))
 
         return candidates
 
 
     @staticmethod
-    def generate_consolidate_conditional_expression_candidates(source_code):
-        root = ast.parse(source_code)
-
-        order_visitor = OrderVisitor()
-        order_visitor.visit(root)
-
-        order = order_visitor.node_order
-
+    def _generate_cc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RefactoringOperator]:
         # Consider only about single if-elif-else structure,
         # with same body in each branch
         # so, we should check whether the body of each branch is same or not
@@ -186,7 +183,7 @@ class CandidateGenerator:
                         break
 
                 if length >= 2:
-                    no = order[node]
+                    no = node_order[node]
                     candidates.append(ConsolidateConditionalExpressionOperator(no, length))
 
         return candidates
