@@ -107,4 +107,47 @@ Module(
                                                                     value=Call(
                                                                         func=Name(id='print', ctx=Load()),
                                                                         args=[
-                                                                            Constant(value='i+j and k+l are zero')]))])])])])])])])])
+                                                                            Constant(value='i+j and k+l are zero')]))])])])])])])]),
+        FunctionDef(
+            name='my_3rd_func',
+            args=arguments(
+                args=[
+                    arg(arg='a'),
+                    arg(arg='b'),
+                    arg(arg='c')]),
+            body=[
+                If(
+                    test=Compare(
+                        left=Name(id='a', ctx=Load()),
+                        ops=[
+                            Eq()],
+                        comparators=[
+                            Constant(value=0)]),
+                    body=[
+                        If(
+                            test=Compare(
+                                left=Name(id='b', ctx=Load()),
+                                ops=[
+                                    Eq()],
+                                comparators=[
+                                    Constant(value=0)]),
+                            body=[
+                                If(
+                                    test=Compare(
+                                        left=Name(id='c', ctx=Load()),
+                                        ops=[
+                                            Eq()],
+                                        comparators=[
+                                            Constant(value=0)]),
+                                    body=[
+                                        Expr(
+                                            value=Call(
+                                                func=Name(id='print', ctx=Load()),
+                                                args=[
+                                                    Constant(value='They are all zero!')]))])])],
+                    orelse=[
+                        Expr(
+                            value=Call(
+                                func=Name(id='print', ctx=Load()),
+                                args=[
+                                    Constant(value='a is not zero')]))])])])
