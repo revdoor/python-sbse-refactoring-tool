@@ -52,7 +52,13 @@ class DecomposeConditionalOperator(RefactoringOperator):
 
 
 class ReplaceNestedConditionalOperator(RefactoringOperator):
-    pass
+    def __init__(self, target_node_no, length):
+        super().__init__(
+            operator_type=RefactoringOperatorType.RNC,
+            target_node_type=NodeType.If,
+            target_node_no=target_node_no,
+            length=length
+        )
 
 
 class InlineMethodOperator(RefactoringOperator):

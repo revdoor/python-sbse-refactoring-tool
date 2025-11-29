@@ -9,6 +9,7 @@ class RefactoringOperatorType(Enum):
     DC = "DecomposeConditional"
     CC = "ConsolidateConditionalExpression"
     RC = "ReverseConditionalExpression"
+    RNC = "ReplaceNestedConditional"
 
 
 class NodeType(Enum):

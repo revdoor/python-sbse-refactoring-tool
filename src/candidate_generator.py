@@ -11,7 +11,8 @@ from refactoring_operator import (
     InlineMethodOperator,
     DecomposeConditionalOperator,
     ReverseConditionalExpressionOperator,
-    ConsolidateConditionalExpressionOperator
+    ConsolidateConditionalExpressionOperator,
+    ReplaceNestedConditionalOperator
 )
 
 
@@ -106,6 +107,8 @@ class CandidateGenerator:
                 return CandidateGenerator._generate_rc_candidates(root, node_order)
             case RefactoringOperatorType.CC:
                 return CandidateGenerator._generate_cc_candidates(root, node_order)
+            case RefactoringOperatorType.RNC:
+                return CandidateGenerator._generate_rnc_candidates(root, node_order)
             case _:
                 return []
 
@@ -189,5 +192,43 @@ class CandidateGenerator:
             if length >= 2:
                 no = node_order[node]
                 candidates.append(ConsolidateConditionalExpressionOperator(no, length))
+
+        return candidates
+
+    @staticmethod
+    def _generate_rnc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RefactoringOperator]:
+        # consider continuous If statements, with no 'orelse' block
+        candidates = []
+
+        for node in ast.walk(root):
+            if not isinstance(node, ast.If):
+                continue
+
+            # check whether it has 'orelse' block or not
+            if node.orelse:
+                continue
+
+            # continuously check whether the next statement is also an If node without body
+            length = 1
+
+            cur_node = node
+            while True:
+                body = cur_node.body
+
+                if len(body) != 1:
+                    break
+
+                if not isinstance(body[0], ast.If):
+                    break
+
+                if body[0].orelse:
+                    break
+
+                length += 1
+                cur_node = body[0]
+
+            if length >= 2:
+                no = node_order[node]
+                candidates.append(ReplaceNestedConditionalOperator(no, length))
 
         return candidates
