@@ -8,10 +8,11 @@ in SBSE process.
 impl order: DC -> IM -> CC -> RNC -> RV / RF -> EM
 """
 
+from abc import ABC
 from type_enums import RefactoringOperatorType, NodeType
 
 
-class RefactoringOperator:
+class RefactoringOperator(ABC):
     def __init__(self, *, operator_type, target_node_type, target_node_no, length=None):
         self.operator_type = operator_type
         self.target_node_type = target_node_type
