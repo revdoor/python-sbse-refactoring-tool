@@ -5,16 +5,6 @@ def in_circle(x, y):
     return x * x + y * y <= 1
 
 
-def hehehe(a, b, c):
-    if a == 0:
-        return True
-    if b == 0:
-        return True
-    if c == 0:
-        return True
-    return False
-
-
 def complex_formula(a, b, c):
     temp = a + b + c
 
@@ -35,3 +25,21 @@ def monte_carlo_pi(num_samples):
             v += 1
 
     return (v / num_samples) * 4
+
+
+vs = [2, 3, 5, 7, 11, 13, 17, 19, 23, 27, 29, 31]
+
+
+def factorization(n):
+    tttt = []
+
+    for p in vs:
+        power = 0
+
+        while n % p == 0:
+            n //= p
+            power += 1
+
+        tttt.append(power)
+
+    return tttt

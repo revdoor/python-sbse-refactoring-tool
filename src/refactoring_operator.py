@@ -5,7 +5,7 @@ in SBSE process.
 """
 
 """
-impl order: DC -> IM -> CC -> RNC -> RV / RF -> EM
+impl order: DC -> IM -> CC -> RNC -> RM / RF -> EM
 """
 
 from abc import ABC
@@ -34,7 +34,7 @@ class ExtractMethodOperator(RefactoringOperator):
     pass
 
 
-class RenameVariableOperator(RefactoringOperator):
+class RenameMethodOperator(RefactoringOperator):
     pass
 
 

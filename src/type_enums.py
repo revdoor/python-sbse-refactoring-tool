@@ -10,6 +10,8 @@ class RefactoringOperatorType(Enum):
     CC = "ConsolidateConditionalExpression"
     RC = "ReverseConditionalExpression"
     RNC = "ReplaceNestedConditional"
+    RF = "RenameField"
+    RM = "RenameMethod"
 
 
 class NodeType(Enum):
