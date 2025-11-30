@@ -27,6 +27,28 @@ Names only, no 'def' or '='
     return response['message']['content']
 
 
+def get_recommendations_for_function_rename(function_code):
+    prompt = f"""Suggest better names for the given function.
+
+    Code:
+    {function_code}
+
+    Suggest 3 better names only, with the order of preference, separated by commas.
+    Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
+    Names only, no 'def'.
+    """
+
+    response = ollama.chat(
+        model='llama3',
+        messages=[
+            {'role': 'system', 'content': 'You are a Python naming expert.'},
+            {'role': 'user', 'content': prompt}
+        ]
+    )
+
+    return response['message']['content']
+
+
 if __name__ == "__main__":
     start_time = time.time()
 
@@ -72,6 +94,24 @@ def monte_carlo_pi(num_samples):
     recommendations = get_recommendations_for_rename(context, target_lines)
 
     print("Recommended names for the target line:")
+    print(recommendations)
+
+    print(f"Execution Time: {time.time() - start_time:.2f} seconds")
+
+    ft_code = """def hehehe(a, b, c):
+if a == 0:
+    return True
+if b == 0:
+    return True
+if c == 0:
+    return True
+return False"""
+
+    start_time = time.time()
+
+    recommendations = get_recommendations_for_function_rename(ft_code)
+
+    print("Recommended names:")
     print(recommendations)
 
     print(f"Execution Time: {time.time() - start_time:.2f} seconds")

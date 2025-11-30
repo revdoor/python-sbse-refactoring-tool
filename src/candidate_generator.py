@@ -12,8 +12,10 @@ from refactoring_operator import (
     DecomposeConditionalOperator,
     ReverseConditionalExpressionOperator,
     ConsolidateConditionalExpressionOperator,
-    ReplaceNestedConditionalOperator
+    ReplaceNestedConditionalOperator,
+    RenameMethodOperator
 )
+from util_llm import get_recommendations_for_function_rename
 
 
 def ast_equal(node1, node2):
@@ -109,6 +111,8 @@ class CandidateGenerator:
                 return CandidateGenerator._generate_cc_candidates(root, node_order)
             case RefactoringOperatorType.RNC:
                 return CandidateGenerator._generate_rnc_candidates(root, node_order)
+            case RefactoringOperatorType.RM:
+                return CandidateGenerator._generate_rm_candidates(root, node_order)
             case _:
                 return []
 
@@ -230,5 +234,25 @@ class CandidateGenerator:
             if length >= 2:
                 no = node_order[node]
                 candidates.append(ReplaceNestedConditionalOperator(no, length))
+
+        return candidates
+
+    @staticmethod
+    def _generate_rm_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RefactoringOperator]:
+        candidates = []
+
+        for node in ast.walk(root):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+
+            no = node_order[node]
+
+            code = ast.unparse(node)
+            recommendations = get_recommendations_for_function_rename(code)
+
+            for _name in recommendations.split(","):
+                name = _name.strip()
+
+                candidates.append(RenameMethodOperator(no, name))
 
         return candidates
