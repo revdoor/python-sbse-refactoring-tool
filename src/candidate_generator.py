@@ -214,7 +214,7 @@ class CandidateGenerator:
             if node.orelse:
                 continue
 
-            # continuously check whether the next statement is also an If node without body
+            # continuously check whether the next statement is also an If node without orelse
             length = 1
 
             cur_node = node
@@ -224,10 +224,11 @@ class CandidateGenerator:
                 if len(body) != 1:
                     break
 
-                if not isinstance(body[0], ast.If):
+                first_body = body[0]
+                if not isinstance(first_body, ast.If):
                     break
 
-                if body[0].orelse:
+                if first_body.orelse:
                     break
 
                 length += 1
