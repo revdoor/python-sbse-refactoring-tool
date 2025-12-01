@@ -14,7 +14,7 @@ def is_zero_or_one(a):
     return False
 
 
-def a(num_str, key):
+def aa(num_str, key):
     cnt = 0
     length = len(key)
 

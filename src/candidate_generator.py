@@ -5,6 +5,8 @@ for the given source code.
 """
 
 import ast
+import random
+import string
 from type_enums import RefactoringOperatorType
 from refactoring_operator import (
     RefactoringOperator,
@@ -247,6 +249,10 @@ class CandidateGenerator:
 
             no = node_order[node]
 
+            orig_name = node.name
+            length = 10
+            node.name = ''.join(random.choice(string.ascii_letters) for _ in range(length))
+
             code = ast.unparse(node)
             recommendations = get_recommendations_for_function_rename(code)
 
@@ -254,5 +260,7 @@ class CandidateGenerator:
                 name = _name.strip()
 
                 candidates.append(RenameMethodOperator(no, name))
+
+            node.name = orig_name
 
         return candidates
