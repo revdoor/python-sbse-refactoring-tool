@@ -251,7 +251,7 @@ class CandidateGenerator:
             no = node_order[node]
 
             orig_name = node.name
-            length = 10
+            length = 20
             node.name = ''.join(random.choice(string.ascii_letters) for _ in range(length))
 
             code = ast.unparse(node)
