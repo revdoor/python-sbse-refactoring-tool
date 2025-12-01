@@ -40,7 +40,7 @@ def get_recommendations_for_function_rename(function_code):
 Code:
 {function_code}
 
-Suggest 3 better names only, with the order of preference, separated by commas.
+Suggest 3 better snake-case names only, with the order of preference, separated by commas.
 Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
 Names only, no 'def'.
 Give reasons simply, in the next line.
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 #
 #     print(f"Execution Time: {time.time() - start_time:.2f} seconds")
 
-    ft_code = """def hehehe(a, b, c):
+    ft_code = """def IlwRKbZAMcQnHzuWQiIy(a, b, c):
     if a == 0:
         return True
     if b == 0:
