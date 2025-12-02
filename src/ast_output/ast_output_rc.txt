@@ -1,0 +1,136 @@
+Module(
+    body=[
+        FunctionDef(
+            name='some_complex_function',
+            args=arguments(
+                args=[
+                    arg(arg='a'),
+                    arg(arg='b'),
+                    arg(arg='c'),
+                    arg(arg='d'),
+                    arg(arg='e')]),
+            body=[
+                If(
+                    test=Compare(
+                        left=Name(id='a', ctx=Load()),
+                        ops=[
+                            Eq()],
+                        comparators=[
+                            Constant(value=0)]),
+                    body=[
+                        Expr(
+                            value=Call(
+                                func=Name(id='print', ctx=Load()),
+                                args=[
+                                    Constant(value='a is zero')]))],
+                    orelse=[
+                        If(
+                            test=Compare(
+                                left=Name(id='b', ctx=Load()),
+                                ops=[
+                                    Eq()],
+                                comparators=[
+                                    Constant(value=0)]),
+                            body=[
+                                Expr(
+                                    value=Call(
+                                        func=Name(id='print', ctx=Load()),
+                                        args=[
+                                            Constant(value='b is zero')]))],
+                            orelse=[
+                                If(
+                                    test=Compare(
+                                        left=Name(id='a', ctx=Load()),
+                                        ops=[
+                                            Eq()],
+                                        comparators=[
+                                            Constant(value=1)]),
+                                    body=[
+                                        Expr(
+                                            value=Call(
+                                                func=Name(id='print', ctx=Load()),
+                                                args=[
+                                                    Constant(value='a is one')]))],
+                                    orelse=[
+                                        If(
+                                            test=Compare(
+                                                left=Name(id='c', ctx=Load()),
+                                                ops=[
+                                                    Eq()],
+                                                comparators=[
+                                                    Constant(value=0)]),
+                                            body=[
+                                                Expr(
+                                                    value=Call(
+                                                        func=Name(id='print', ctx=Load()),
+                                                        args=[
+                                                            Constant(value='c is zero')]))],
+                                            orelse=[
+                                                If(
+                                                    test=BoolOp(
+                                                        op=And(),
+                                                        values=[
+                                                            Compare(
+                                                                left=Name(id='d', ctx=Load()),
+                                                                ops=[
+                                                                    Eq()],
+                                                                comparators=[
+                                                                    Constant(value=0)]),
+                                                            Compare(
+                                                                left=Name(id='e', ctx=Load()),
+                                                                ops=[
+                                                                    Eq()],
+                                                                comparators=[
+                                                                    Constant(value=0)])]),
+                                                    body=[
+                                                        Expr(
+                                                            value=Call(
+                                                                func=Name(id='print', ctx=Load()),
+                                                                args=[
+                                                                    Constant(value='d and e are zero')]))],
+                                                    orelse=[
+                                                        If(
+                                                            test=BoolOp(
+                                                                op=Or(),
+                                                                values=[
+                                                                    Compare(
+                                                                        left=Name(id='b', ctx=Load()),
+                                                                        ops=[
+                                                                            Eq()],
+                                                                        comparators=[
+                                                                            Constant(value=1)]),
+                                                                    Compare(
+                                                                        left=Name(id='c', ctx=Load()),
+                                                                        ops=[
+                                                                            Eq()],
+                                                                        comparators=[
+                                                                            Constant(value=1)])]),
+                                                            body=[
+                                                                Expr(
+                                                                    value=Call(
+                                                                        func=Name(id='print', ctx=Load()),
+                                                                        args=[
+                                                                            Constant(value='either b or c is one')]))],
+                                                            orelse=[
+                                                                If(
+                                                                    test=Compare(
+                                                                        left=BinOp(
+                                                                            left=Name(id='d', ctx=Load()),
+                                                                            op=Add(),
+                                                                            right=Name(id='e', ctx=Load())),
+                                                                        ops=[
+                                                                            Eq()],
+                                                                        comparators=[
+                                                                            Constant(value=0)]),
+                                                                    body=[
+                                                                        Expr(
+                                                                            value=Call(
+                                                                                func=Name(id='print', ctx=Load()),
+                                                                                args=[
+                                                                                    Constant(value='d and e sum to zero')]))],
+                                                                    orelse=[
+                                                                        Expr(
+                                                                            value=Call(
+                                                                                func=Name(id='print', ctx=Load()),
+                                                                                args=[
+                                                                                    Constant(value='no conditions met')]))])])])])])])])])])
