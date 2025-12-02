@@ -13,7 +13,7 @@ class MetricCalculator:
         pass
 
     def calculate_metric(self, source_code):
-        # TODO: Implement metric calculation logic
+        # Metric calculation logic
         # It should calculate various metrics for the given source code and return them
         # Metrics: cyclomatic complexity, lines of code, fan-in, LLM readability score
 
@@ -22,18 +22,19 @@ class MetricCalculator:
         
         score_cyclomatic = self.cyclomatic_complexity(code, root)
         score_SLOC = self.SLOC(code, root)
-        score_fan_in = self.num_incoming_invocation(code, root)
+        score_fan_in, dict_fan_in = self.fan_in(code, root)
+        score_LLM = self.LLM_readability_score(code, root)
 
-        print("cyclomatic", score_cyclomatic)
-        print("SLOC", score_SLOC)
-        print("fan-in", score_fan_in)
+        # print("cyclomatic", score_cyclomatic)
+        # print("SLOC", score_SLOC)
+        # print("fan-in", score_fan_in)
+        # print("LLM readability", score_LLM)
 
-        pass
-
+        return score_cyclomatic, score_SLOC, score_fan_in, score_LLM
+    
     def cyclomatic_complexity(self, source_code, root):
-        # TODO:(#. edges) - (#. nodes) + 2*(#. components) in the control flow graph.
-        # revisit 'radon' module: use number of decision points in AST
-        # instead of control flow graph.
+        # (#. edges) - (#. nodes) + 2*(#. components) in the control flow graph.
+        # idea from 'radon' module: use number of decision points in AST to calculate.
 
         class CCVisitor(ast.NodeVisitor):
             def __init__(self):
@@ -62,6 +63,7 @@ class MetricCalculator:
 
         visitor = CCVisitor()
         visitor.visit(root)
+        #visitor.cc is number of decision points, which becomes score of cyclomatic_complexity.
         return visitor.cc
 
     def SLOC(self, source_code, root):
@@ -69,10 +71,10 @@ class MetricCalculator:
         lines = source_code.split("\n")
         return len(lines)
     
-    def num_incoming_invocation(self, source_code, root):
+    def fan_in(self, source_code, root):
         #Fan-In: it represents how many other function/modules calls that function/modules.
 
-        #Version: number of ast.Call
+        #Simple Version: number of ast.Call
         # num_fan_in = 0
 
         # for node in ast.walk(root):
@@ -82,7 +84,9 @@ class MetricCalculator:
         
         #return num_fan_in
 
-        #Version: make a dict. of fan-in for each callable node
+
+        #Version: make a dictionary, where id of callable function is key and
+        #   the number of fan_in for each id is value.
 
         fan_in_dict = {}
 
@@ -105,16 +109,18 @@ class MetricCalculator:
 
                 fan_in_dict[func_name] = fan_in_dict.get(func_name, 0) + 1
         
+        #score : sum of each value in dictionary. Same as total fan-in number.
+        score = 0
+        for func_name in fan_in_dict:
+            score += fan_in_dict[func_name]
         
-        return fan_in_dict
+        return score, fan_in_dict
 
-    def num_refactoring(self, source_code, root):
-        #TODO:
-        pass
+    # def num_refactoring(self, source_code, root):
+    #     pass
 
-    def num_failed_op(self, source_code, root):
-        #TODO:
-        pass
+    # def num_failed_op(self, source_code, root):
+    #     pass
 
     def LLM_readability_score(self, source_code, root):
         #calculate the LLM readability score with local LLMs such as llama-3
@@ -145,8 +151,9 @@ class MetricCalculator:
         first = lines[0].strip()
 
         # First line of response should follow 'Score: xx/100' format.
+        # Returns 'xx' as points.
         # If not, this code consider it as a miss of llama-3 and ignore it.
-        # If first line of response not followes given format, it considered as 0 point.
+        # In this case, we considere it as 0 point.
 
         try:
             score_str = first.replace("Score:", "").replace("/100", "").strip()
@@ -157,36 +164,6 @@ class MetricCalculator:
         return score
 
 
-# test_code = """def hehehe(a, b, c):
-#     if a == 0:
-#         return True
-#     if b == 0:
-#         return True
-#     if c == 0:
-#         return True
-#     return False
-
-# def complex_formula(a, b, c):
-#     temp = a + b + c
-    
-#     if temp % 2 == 0:
-#         return hehehe(a, b, temp)
-#     if temp % 3 == 0:
-#         return hehehe(a, temp, c)
-#     return hehehe(temp, b, c)
-    
-# def monte_carlo_pi(num_samples):
-#     v = 0
-
-#     for _ in range(num_samples):
-#         x = random.uniform(-1, 1)
-#         y = random.uniform(-1, 1)
-#         if in_circle(x, y):
-#             v += 1
-
-#     return (v / num_samples) * 4
-#     """
-
 test_code = """def hehehe(a, b, c):
     if a == 0:
         return True
@@ -194,7 +171,28 @@ test_code = """def hehehe(a, b, c):
         return True
     if c == 0:
         return True
-    return False"""
+    return False
+
+def complex_formula(a, b, c):
+    temp = a + b + c
+    
+    if temp % 2 == 0:
+        return hehehe(a, b, temp)
+    if temp % 3 == 0:
+        return hehehe(a, temp, c)
+    return hehehe(temp, b, c)
+    
+def monte_carlo_pi(num_samples):
+    v = 0
+
+    for _ in range(num_samples):
+        x = random.uniform(-1, 1)
+        y = random.uniform(-1, 1)
+        if in_circle(x, y):
+            v += 1
+
+    return (v / num_samples) * 4
+    """
 
 temp = MetricCalculator()
 temp.calculate_metric(test_code)
