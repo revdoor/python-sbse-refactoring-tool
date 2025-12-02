@@ -12,6 +12,7 @@ class RefactoringOperatorType(Enum):
     RNC = "ReplaceNestedConditional"
     RF = "RenameField"
     RM = "RenameMethod"
+    EM = "ExtractMethod"
 
 
 class NodeType(Enum):
