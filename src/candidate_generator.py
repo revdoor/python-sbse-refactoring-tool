@@ -255,10 +255,12 @@ class CandidateGenerator:
             node.name = ''.join(random.choice(string.ascii_letters) for _ in range(length))
 
             code = ast.unparse(node)
-            recommendations = get_recommendations_for_function_rename(code)
+            recommendations = get_recommendations_for_function_rename(code).split('\n')[0]
 
             for _name in recommendations.split(","):
                 name = _name.strip()
+                if not name:
+                    continue
 
                 candidates.append(RenameMethodOperator(no, name))
 
