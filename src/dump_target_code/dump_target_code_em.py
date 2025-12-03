@@ -21,3 +21,9 @@ def take_order(order):
     order.fee = fee
 
     order.state = 'TAKEN'
+
+    start_delivery(order)
+
+
+def start_delivery(order):
+    pass
