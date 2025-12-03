@@ -4,18 +4,21 @@ which is used to run the NSGA-II algorithm
 to find the optimal set of refactorings
 for the given source code.
 """
+from __future__ import annotations
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import random
 
+from candidate_generator import CandidateGenerator
+from refactoring_operator import RefactoringOperator
+
+
 @dataclass
 class RefactoringPlan:
     """
-    Represents a candidate solution = a sequence of refactoring genes.
-    For now it's just a list[Any]
-    Can be modified later (e.g. (op_type, ast_address, params)).
+    A candidate solution: a sequence of refactoring operators.
     """
-    genes: List[Any]
+    genes: List[RefactoringOperator]
 
 
 @dataclass
@@ -39,7 +42,7 @@ class NSGARunner:
       - evolves a population and returns an approximate Pareto front
     """
     def __init__(
-            self,
+        self,
         candidate_generator: Callable[[], RefactoringPlan],
         applier: Callable[[RefactoringPlan], Any],
         metric_calculator: Callable[[Any], Dict[str, float]],
@@ -49,6 +52,7 @@ class NSGARunner:
         cx_prob: float = 0.7,
         mut_prob: float = 0.3,
         random_seed: int = 0,
+        candidate_pool: Optional[List[RefactoringOperator]] = None,
         ):
             self.candidate_generator = candidate_generator
             self.applier = applier
@@ -60,7 +64,60 @@ class NSGARunner:
             self.cx_prob = cx_prob
             self.mut_prob = mut_prob
             self.random = random.Random(random_seed)
-        
+
+            self.candidate_pool: List[RefactoringOperator] = candidate_pool or []
+
+    @classmethod
+    def from_source_code(
+        cls,
+        source_code: str,
+        applier: Callable[[RefactoringPlan], Any],
+        metric_calculator: Callable[[Any], Dict[str, float]],
+        readability_scorer: Optional[Callable[[Any], float]] = None,
+        pop_size: int = 40,
+        n_generations: int = 30,
+        cx_prob: float = 0.7,
+        mut_prob: float = 0.3,
+        random_seed: int = 0,
+    ) -> "NSGARunner":
+        """
+        Helper to build an NSGARunner directly from raw source code.
+        It will:
+          - ask CandidateGenerator for all possible RefactoringOperator candidates
+          - build a candidate_generator() that samples random subsets of them
+        """
+        all_candidates: List[RefactoringOperator] = CandidateGenerator.generate_candidates(source_code)
+        rnd = random.Random(random_seed)
+        def make_random_plan() -> RefactoringPlan:
+            """
+            Sample a random subset of the global candidate list.
+
+            For now:
+            - choose a random length in [1, min(5, len(all_candidates))]
+            - sample without replacement
+            """
+            if not all_candidates:
+                # degenerate case: no candidates → empty plan
+                return RefactoringPlan(genes=[])
+
+            max_len = min(5, len(all_candidates))
+            length = rnd.randint(1, max_len)
+            genes = rnd.sample(all_candidates, length)
+            return RefactoringPlan(genes=genes)
+
+        return cls(
+            candidate_generator=make_random_plan,
+            applier=applier,
+            metric_calculator=metric_calculator,
+            readability_scorer=readability_scorer,
+            pop_size=pop_size,
+            n_generations=n_generations,
+            cx_prob=cx_prob,
+            mut_prob=mut_prob,
+            random_seed=random_seed,
+            candidate_pool=all_candidates,
+        )
+
     def run(self) -> List[Individual]:
         """
         Main entry point: run NSGA-II and return the final Pareto front.
@@ -222,8 +279,12 @@ class NSGARunner:
         if self.random.random() < 0.5:
             idx = self.random.randrange(len(genes))
             del genes[idx]
-        # Otherwise: TODO: replace gene / slightly perturb parameters
-
+        else:
+            # Add a new random gene from the global pool (if available)
+            if self.candidate_pool:
+                new_gene = self.random.choice(self.candidate_pool)
+                # avoid trivial duplicates if you want
+                genes.append(new_gene)
         return RefactoringPlan(genes=genes)
     
     def _environmental_selection(self, population: List[Individual]) -> List[Individual]:
@@ -236,6 +297,7 @@ class NSGARunner:
         """
         fronts = self._non_dominated_sort(population)
         new_pop: List[Individual] = []
+
         for rank, front in enumerate(fronts):
             self._assign_crowding_distance(front)
             for ind in front:
