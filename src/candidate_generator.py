@@ -8,7 +8,6 @@ import ast
 import random
 import string
 
-from src.refactoring_operator import RemoveDuplicateMethodOperator
 from type_enums import RefactoringOperatorType
 from refactoring_operator import (
     RefactoringOperator,
