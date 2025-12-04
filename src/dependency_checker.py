@@ -3,6 +3,7 @@ This module defines the DependencyChecker class,
 which is used to check the dependency for the nodes between the surroundings.
 """
 import ast
+import random
 from pathlib import Path
 from type_enums import RefactoringOperatorType
 
@@ -11,7 +12,7 @@ class DependencyVisitor(ast.NodeVisitor):
     def __init__(self, ignore_nodes=None):
         self.store_ids = set()
         self.load_ids = set()
-        self.ignore_nodes = None
+        self.ignore_nodes = ignore_nodes
 
     def visit_Name(self, node):
         if self.ignore_nodes and node in self.ignore_nodes:
@@ -32,7 +33,7 @@ class DependencyVisitor(ast.NodeVisitor):
 class DependencyChecker:
     @staticmethod
     def is_dependency_free(top_lvl_node, parent_node, attr_name, idx, length):
-        if not hasattr(attr_name, parent_node):
+        if not hasattr(parent_node, attr_name):
             return False
 
         attr = getattr(parent_node, attr_name)
@@ -81,7 +82,12 @@ if __name__ == "__main__":
 
         for _node in ast.walk(root):
             if isinstance(_node, ast.FunctionDef):
-                print(f"Function {_node.name}")
-                store_ids, load_ids = DependencyChecker._dependency(_node)
-                print("  Store IDs:", store_ids)
-                print("  Load IDs:", load_ids)
+                body = _node.body
+
+                i, j = random.choices(range(len(body)), k=2)
+                if i > j:
+                    i, j = j, i
+
+                print(f"Function {_node.name}, from statement {i} to {j}:")
+                DependencyChecker.is_dependency_free(_node, _node, 'body', i, j - i + 1)
+                print()
