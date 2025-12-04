@@ -1,5 +1,7 @@
 import ast
 
+from util import get_random_name
+
 
 _MISSING = object()
 
@@ -33,6 +35,25 @@ def ast_similar(node1, node2):
     """
     map_id1_to_id2 = dict()
     map_id2_to_id1 = dict()
+
+    # if the nodes have names (e.g., function definitions),
+    # temporarily rename both nodes to a common name
+    # to ignore the name difference during comparison
+    if hasattr(node1, 'name') and hasattr(node2, 'name'):
+        orig_name1 = node1.name
+        orig_name2 = node2.name
+
+        temp_name = get_random_name()
+
+        node1.name = temp_name
+        node2.name = temp_name
+
+        name_changed = True
+    else:
+        orig_name1 = None
+        orig_name2 = None
+
+        name_changed = False
 
     def _map_ids(id1, id2):
         existing_id2 = map_id1_to_id2.get(id1, _MISSING)
@@ -71,7 +92,13 @@ def ast_similar(node1, node2):
         else:
             return node1 == node2
 
-    return _ast_similar(node1, node2)
+    result = _ast_similar(node1, node2)
+
+    if name_changed:
+        node1.name = orig_name1
+        node2.name = orig_name2
+
+    return result
 
 
 def find_same_level_ifs(if_node):

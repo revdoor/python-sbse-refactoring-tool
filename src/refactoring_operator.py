@@ -13,21 +13,34 @@ from type_enums import RefactoringOperatorType, NodeType
 
 
 class RefactoringOperator(ABC):
-    def __init__(self, *, operator_type, target_node_type, target_node_no, length=None, new_name=None):
+    def __init__(
+            self,
+            *,
+            operator_type,
+            target_node_type,
+            target_node_no,
+            length=None,
+            new_name=None,
+            reference_node_no=None
+    ):
         self.operator_type = operator_type
         self.target_node_type = target_node_type
         self.target_node_no = target_node_no
         self.length = length
         self.new_name = new_name
+        self.reference_node_no = reference_node_no
 
     def __str__(self):
         var_strs = [f"target={self.target_node_type.value}[{self.target_node_no}]"]
 
-        if self.length:
+        if self.length is not None:
             var_strs.append(f"length={self.length}")
 
-        if self.new_name:
+        if self.new_name is not None:
             var_strs.append(f"new_name={self.new_name}")
+
+        if self.reference_node_no is not None:
+            var_strs.append(f"reference_node_no={self.reference_node_no}")
 
         var_str = ", ".join(var_strs)
 
@@ -43,11 +56,12 @@ class ExtractMethodWithReturnOperator(RefactoringOperator):
 
 
 class RemoveDuplicateMethodOperator(RefactoringOperator):
-    def __init__(self, target_node_no):
+    def __init__(self, target_node_no, reference_node_no):
         super().__init__(
             operator_type=RefactoringOperatorType.RDM,
             target_node_type=NodeType.FunctionDef,
-            target_node_no=target_node_no
+            target_node_no=target_node_no,
+            reference_node_no=reference_node_no
         )
 
 

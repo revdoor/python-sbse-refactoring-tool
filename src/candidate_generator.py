@@ -5,8 +5,6 @@ for the given source code.
 """
 
 import ast
-import random
-import string
 from collections.abc import Sequence
 
 from type_enums import RefactoringOperatorType
@@ -20,6 +18,7 @@ from refactoring_operator import (
     RenameMethodOperator,
     RemoveDuplicateMethodOperator
 )
+from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs
 from util_llm import get_recommendations_for_function_rename
 
@@ -247,8 +246,7 @@ class CandidateGenerator:
             no = node_order[node]
 
             orig_name = node.name
-            length = 10
-            node.name = ''.join(random.choice(string.ascii_letters) for _ in range(length))
+            node.name = get_random_name()
 
             code = ast.unparse(node)
             recommendations = get_recommendations_for_function_rename(code).split('\n')[0]
@@ -282,23 +280,12 @@ class CandidateGenerator:
                 node1 = function_nodes[i]
                 node2 = function_nodes[j]
 
-                orig_name1 = node1.name
-                orig_name2 = node2.name
-
-                # temporarily rename both functions to a common name
-                # to ignore the name difference during comparison
-                node1.name = "func_temp"
-                node2.name = "func_temp"
-
                 if ast_similar(node1, node2):
                     # found duplicate functions
                     # remove the latter one only
-                    no = node_order[node2]
+                    no1 = node_order[node1]
+                    no2 = node_order[node2]
                     CandidateGenerator._add_unique_candidate(
-                        candidates, seen_args, RemoveDuplicateMethodOperator, no)
-
-                # restore original names
-                node1.name = orig_name1
-                node2.name = orig_name2
+                        candidates, seen_args, RemoveDuplicateMethodOperator, no2, no1)
 
         return candidates
