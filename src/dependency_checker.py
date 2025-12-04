@@ -41,21 +41,18 @@ class DependencyChecker:
 
         target_nodes = attr[idx: idx + length]
 
-        target_store_ids = set()
-        target_load_ids = set()
-
+        target_visitor = DependencyVisitor()
         for target_node in target_nodes:
-            for node in ast.walk(target_node):
-                store_ids, load_ids = DependencyChecker._dependency(node)
+            target_visitor.visit(target_node)
 
-                target_store_ids.update(store_ids)
-                target_load_ids.update(load_ids)
+        target_store_ids = target_visitor.store_ids
+        target_load_ids = target_visitor.load_ids
 
-        dependency_visitor = DependencyVisitor(target_nodes)
-        dependency_visitor.visit(top_lvl_node)
+        outer_visitor = DependencyVisitor(target_nodes)
+        outer_visitor.visit(top_lvl_node)
 
-        outer_store_ids = dependency_visitor.store_ids
-        outer_load_ids = dependency_visitor.load_ids
+        outer_store_ids = outer_visitor.store_ids
+        outer_load_ids = outer_visitor.load_ids
 
         print("Target store IDs:", target_store_ids)
         print("Target load IDs:", target_load_ids)
@@ -64,19 +61,11 @@ class DependencyChecker:
 
     @staticmethod
     def _dependency(node):
-        store_ids = set()
-        load_ids = set()
+        visitor = DependencyVisitor()
 
-        for _node in ast.walk(node):
-            if isinstance(_node, ast.Name):
-                _id = _node.id
+        visitor.visit(node)
 
-                if isinstance(_node.ctx, ast.Load):
-                    load_ids.add(_id)
-                else:
-                    store_ids.add(_id)
-
-        return store_ids, load_ids
+        return visitor.store_ids, visitor.load_ids
 
 
 if __name__ == "__main__":
