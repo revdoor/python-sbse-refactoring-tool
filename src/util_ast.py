@@ -51,7 +51,7 @@ def ast_similar(node1, node2):
 
         if isinstance(node1, ast.AST):
             for field in node1._fields:
-                if field == 'id':
+                if field == 'id' or field == 'arg':
                     id1 = getattr(node1, field, _MISSING)
                     id2 = getattr(node2, field, _MISSING)
 
