@@ -81,6 +81,8 @@ class CandidateGenerator:
                 return CandidateGenerator._generate_rnc_candidates(root, node_order)
             case RefactoringOperatorType.RM:
                 return CandidateGenerator._generate_rm_candidates(root, node_order)
+            case RefactoringOperatorType.RDM:
+                return CandidateGenerator._generate_rdm_candidates(root, node_order)
             case _:
                 return []
 
