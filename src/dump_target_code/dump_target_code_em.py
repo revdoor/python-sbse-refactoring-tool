@@ -27,3 +27,17 @@ def take_order(order):
 
 def start_delivery(order):
     pass
+
+
+def calculate_result(x, y, z, w):
+    dist_xy = x ** 2 + y ** 2
+    dist_zw = z ** 2 + w ** 2
+
+    if dist_xy < dist_zw:
+        val = z * w - x * y
+    else:
+        val = x * y - z * w
+
+    tot_sum = x + y + z + w
+
+    return val * tot_sum
