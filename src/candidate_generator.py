@@ -96,10 +96,18 @@ class CandidateGenerator:
         return root, order_visitor.node_order
 
     @staticmethod
+    def _add_unique_candidate(candidates, seen_args, operator_class, *args):
+        key = args if len(args) > 1 else args[0]
+        if key not in seen_args:
+            candidates.append(operator_class(*args))
+            seen_args.add(key)
+
+    @staticmethod
     def _generate_dc_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[DecomposeConditionalOperator]:
         candidates = []
+        seen_args = set()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -111,7 +119,8 @@ class CandidateGenerator:
             if isinstance(node.test, ast.BoolOp) and \
                     (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
                 no = node_order[node]
-                candidates.append(DecomposeConditionalOperator(no))
+                CandidateGenerator._add_unique_candidate(
+                    candidates, seen_args, DecomposeConditionalOperator, no)
 
         return candidates
 
@@ -120,6 +129,7 @@ class CandidateGenerator:
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[InlineMethodOperator]:
         candidates = []
+        seen_args = set()
 
         for node in root.body:
             if isinstance(node, ast.FunctionDef):
@@ -127,7 +137,8 @@ class CandidateGenerator:
                 # to handle simple inline method refactoring
                 if len(node.body) == 1:
                     no = node_order[node]
-                    candidates.append(InlineMethodOperator(no))
+                    CandidateGenerator._add_unique_candidate(
+                        candidates, seen_args, InlineMethodOperator, no)
 
         return candidates
 
@@ -136,11 +147,13 @@ class CandidateGenerator:
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[ReverseConditionalExpressionOperator]:
         candidates = []
+        seen_args = set()
 
         for node in ast.walk(root):
             if isinstance(node, ast.If):
                 no = node_order[node]
-                candidates.append(ReverseConditionalExpressionOperator(no))
+                CandidateGenerator._add_unique_candidate(
+                    candidates, seen_args, ReverseConditionalExpressionOperator, no)
 
         return candidates
 
@@ -152,6 +165,7 @@ class CandidateGenerator:
         # with same body in each branch
         # so, we should check whether the body of each branch is same or not
         candidates = []
+        seen_args = set()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -171,7 +185,8 @@ class CandidateGenerator:
 
             if length >= 2:
                 no = node_order[node]
-                candidates.append(ConsolidateConditionalExpressionOperator(no, length))
+                CandidateGenerator._add_unique_candidate(
+                    candidates, seen_args, ConsolidateConditionalExpressionOperator, no, length)
 
         return candidates
 
@@ -181,6 +196,7 @@ class CandidateGenerator:
     ) -> list[ReplaceNestedConditionalOperator]:
         # consider continuous If statements, with no 'orelse' block
         candidates = []
+        seen_args = set()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -212,7 +228,8 @@ class CandidateGenerator:
 
             if length >= 2:
                 no = node_order[node]
-                candidates.append(ReplaceNestedConditionalOperator(no, length))
+                CandidateGenerator._add_unique_candidate(
+                    candidates, seen_args, ReplaceNestedConditionalOperator, no, length)
 
         return candidates
 
@@ -221,6 +238,7 @@ class CandidateGenerator:
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[RenameMethodOperator]:
         candidates = []
+        seen_args = set()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.FunctionDef):
@@ -239,8 +257,8 @@ class CandidateGenerator:
                 name = _name.strip()
                 if not name:
                     continue
-
-                candidates.append(RenameMethodOperator(no, name))
+                CandidateGenerator._add_unique_candidate(
+                    candidates, seen_args, RenameMethodOperator, no, name)
 
             node.name = orig_name
 
@@ -250,13 +268,14 @@ class CandidateGenerator:
     def _generate_rdm_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[RemoveDuplicateMethodOperator]:
+        candidates = []
+        seen_args = set()
+
         function_nodes = []
 
         for node in ast.walk(root):
             if isinstance(node, ast.FunctionDef):
                 function_nodes.append(node)
-
-        candidates = []
 
         for i in range(len(function_nodes)):
             for j in range(i+1, len(function_nodes)):
@@ -275,7 +294,8 @@ class CandidateGenerator:
                     # found duplicate functions
                     # remove the latter one only
                     no = node_order[node2]
-                    candidates.append(RemoveDuplicateMethodOperator(no))
+                    CandidateGenerator._add_unique_candidate(
+                        candidates, seen_args, RemoveDuplicateMethodOperator, no)
 
                 # restore original names
                 node1.name = orig_name1
