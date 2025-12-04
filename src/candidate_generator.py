@@ -17,49 +17,8 @@ from refactoring_operator import (
     ReplaceNestedConditionalOperator,
     RenameMethodOperator
 )
+from util_ast import ast_equal, find_same_level_ifs
 from util_llm import get_recommendations_for_function_rename
-
-
-def ast_equal(node1, node2):
-    # recursively compare two AST nodes for equality
-    if type(node1) != type(node2):
-        return False
-
-    if isinstance(node1, ast.AST):
-        for field in node1._fields:
-            if not ast_equal(getattr(node1, field, None),
-                             getattr(node2, field, None)):
-                return False
-        return True
-
-    elif isinstance(node1, list):
-        if len(node1) != len(node2):
-            return False
-        return all(ast_equal(n1, n2) for n1, n2 in zip(node1, node2))
-
-    else:
-        return node1 == node2
-
-
-def find_same_level_ifs(if_node):
-    # if-elif-elif-else structure -> if-orelse, in orelse if-orelse, ...
-    # so, we need to traverse orelse till it is not an If node
-    # collect the conditions and bodies too
-
-    branches = []
-
-    cur_node = if_node
-    while isinstance(cur_node, ast.If):
-        branches.append((cur_node.test, cur_node.body))
-
-        if cur_node.orelse and len(cur_node.orelse) == 1 and isinstance(cur_node.orelse[0], ast.If):
-            cur_node = cur_node.orelse[0]
-        else:
-            if cur_node.orelse:
-                branches.append((None, cur_node.orelse))
-            break
-
-    return branches
 
 
 class OrderVisitor(ast.NodeVisitor):
@@ -127,7 +86,6 @@ class CandidateGenerator:
 
         return root, order_visitor.node_order
 
-
     @staticmethod
     def _generate_dc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[DecomposeConditionalOperator]:
         candidates = []
@@ -170,7 +128,6 @@ class CandidateGenerator:
                 candidates.append(ReverseConditionalExpressionOperator(no))
 
         return candidates
-
 
     @staticmethod
     def _generate_cc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[ConsolidateConditionalExpressionOperator]:
