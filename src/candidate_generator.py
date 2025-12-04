@@ -18,15 +18,6 @@ from refactoring_operator import (
     RenameMethodOperator,
     RemoveDuplicateMethodOperator
 )
-from candidate_collector import (
-    IMCollector,
-    DCCollector,
-    RCCollector,
-    CCCollector,
-    RNCCollector,
-    RMCollector,
-    RDMCollector
-)
 from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs
 from util_llm import get_recommendations_for_function_rename
@@ -107,7 +98,7 @@ class CandidateGenerator:
     def _generate_dc_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[DecomposeConditionalOperator]:
-        collector = DCCollector()
+        candidates = []
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -119,15 +110,15 @@ class CandidateGenerator:
             if isinstance(node.test, ast.BoolOp) and \
                     (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
                 no = node_order[node]
-                collector.add(no)
+                candidates.append(DecomposeConditionalOperator(no))
 
-        return collector.get_candidates()
+        return candidates
 
     @staticmethod
     def _generate_im_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[InlineMethodOperator]:
-        collector = IMCollector()
+        candidates = []
 
         for node in root.body:
             if isinstance(node, ast.FunctionDef):
@@ -135,22 +126,22 @@ class CandidateGenerator:
                 # to handle simple inline method refactoring
                 if len(node.body) == 1:
                     no = node_order[node]
-                    collector.add(no)
+                    candidates.append(InlineMethodOperator(no))
 
-        return collector.get_candidates()
+        return candidates
 
     @staticmethod
     def _generate_rc_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[ReverseConditionalExpressionOperator]:
-        collector = RCCollector()
+        candidates = []
 
         for node in ast.walk(root):
             if isinstance(node, ast.If):
                 no = node_order[node]
-                collector.add(no)
+                candidates.append(ReverseConditionalExpressionOperator(no))
 
-        return collector.get_candidates()
+        return candidates
 
     @staticmethod
     def _generate_cc_candidates(
@@ -159,7 +150,7 @@ class CandidateGenerator:
         # Consider only about single if-elif-else structure,
         # with same body in each branch
         # so, we should check whether the body of each branch is same or not
-        collector = CCCollector()
+        candidates = []
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -179,16 +170,16 @@ class CandidateGenerator:
 
             if length >= 2:
                 no = node_order[node]
-                collector.add(no, length)
+                candidates.append(ConsolidateConditionalExpressionOperator(no, length))
 
-        return collector.get_candidates()
+        return candidates
 
     @staticmethod
     def _generate_rnc_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[ReplaceNestedConditionalOperator]:
         # consider continuous If statements, with no 'orelse' block
-        collector = RNCCollector()
+        candidates = []
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -220,15 +211,15 @@ class CandidateGenerator:
 
             if length >= 2:
                 no = node_order[node]
-                collector.add(no, length)
+                candidates.append(ReplaceNestedConditionalOperator(no, length))
 
-        return collector.get_candidates()
+        return candidates
 
     @staticmethod
     def _generate_rm_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[RenameMethodOperator]:
-        collector = RMCollector()
+        candidates = []
 
         for node in ast.walk(root):
             if not isinstance(node, ast.FunctionDef):
@@ -246,17 +237,17 @@ class CandidateGenerator:
                 name = _name.strip()
                 if not name:
                     continue
-                collector.add(no, name)
+                candidates.append(RenameMethodOperator(no, name))
 
             node.name = orig_name
 
-        return collector.get_candidates()
+        return candidates
 
     @staticmethod
     def _generate_rdm_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[RemoveDuplicateMethodOperator]:
-        collector = RDMCollector()
+        candidates = []
 
         function_nodes = []
 
@@ -274,6 +265,6 @@ class CandidateGenerator:
                     # remove the latter one only
                     no1 = node_order[node1]
                     no2 = node_order[node2]
-                    collector.add(no2, no1)
+                    candidates.append(RemoveDuplicateMethodOperator(no2, no1))
 
-        return collector.get_candidates()
+        return candidates
