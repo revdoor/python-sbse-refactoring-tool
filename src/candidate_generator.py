@@ -261,10 +261,22 @@ class CandidateGenerator:
                 node1 = function_nodes[i]
                 node2 = function_nodes[j]
 
+                orig_name1 = node1.name
+                orig_name2 = node2.name
+
+                # temporarily rename both functions to a common name
+                # to ignore the name difference during comparison
+                node1.name = "func_temp"
+                node2.name = "func_temp"
+
                 if ast_similar(node1, node2):
                     # found duplicate functions
                     # remove the latter one only
                     no = node_order[node2]
                     candidates.append(RemoveDuplicateMethodOperator(no))
+
+                # restore original names
+                node1.name = orig_name1
+                node2.name = orig_name2
 
         return candidates
