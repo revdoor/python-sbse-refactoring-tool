@@ -13,6 +13,7 @@ class RefactoringOperatorType(Enum):
     RF = "RenameField"
     RM = "RenameMethod"
     EM = "ExtractMethod"
+    EMR = "ExtractMethodWithReturn"
 
 
 class NodeType(Enum):

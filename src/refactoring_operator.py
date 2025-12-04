@@ -38,6 +38,10 @@ class ExtractMethodOperator(RefactoringOperator):
     pass
 
 
+class ExtractMethodWithReturnOperator(RefactoringOperator):
+    pass
+
+
 class RenameMethodOperator(RefactoringOperator):
     def __init__(self, target_node_no, new_name):
         super().__init__(
