@@ -1,5 +1,6 @@
-import ollama
 import time
+import re
+import ollama
 
 
 def get_recommendations_for_rename(context_code, target_lines):
@@ -47,6 +48,55 @@ def get_recommendations_for_function_rename(function_code):
     )
 
     return response['message']['content']
+
+
+def llm_readability_score(source_code):
+    """
+    LLM readability score calculation.
+    It would calculate the 'readability score' with local LLM such as llama-3.
+    """
+
+    prompt = f"""The assistant is a seasoned senior software engineer,
+    with deep Python Language expertise,
+    doing source code evaluation as part of a due diligence process,
+    these source codes are presented in the form of a Python code snippet.
+    Your task is to emit a score from 0 to 100 based on the readability level of the source code presented.
+    The response should start with first line with 'Score: xx/100' format without any extra characters,
+    and there would be some detailed explanations about that score.
+
+    Following is a Python source code to emit a score.
+
+    {source_code}"""
+
+    response = ollama.chat(
+        model='llama3',
+        messages=[
+            {'role': 'system', 'content': 'You are a strict Python code readability evaluator.'},
+            {'role': 'user', 'content': prompt}
+        ]
+    )
+
+    content = response['message']['content']
+
+    lines = content.split('\n')
+    first_line = lines[0].strip()
+
+    # First line of response should follow 'Score: xx/100' format.
+    # Returns 'xx' as points.
+    # If not, this code consider it as a miss of llama-3 and ignore it.
+    # In this case, we consider it as 0 point.
+
+    match = re.search(r'Score: (\d+)/100', first_line)
+
+    if match:
+        try:
+            score = int(match.group(1))
+        except ValueError:
+            score = 0
+    else:
+        score = 0
+
+    return score
 
 
 if __name__ == "__main__":
