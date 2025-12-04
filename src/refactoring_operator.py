@@ -42,6 +42,15 @@ class ExtractMethodWithReturnOperator(RefactoringOperator):
     pass
 
 
+class RemoveDuplicateMethodOperator(RefactoringOperator):
+    def __init__(self, target_node_no):
+        super().__init__(
+            operator_type=RefactoringOperatorType.RDM,
+            target_node_type=NodeType.FunctionDef,
+            target_node_no=target_node_no
+        )
+
+
 class RenameMethodOperator(RefactoringOperator):
     def __init__(self, target_node_no, new_name):
         super().__init__(

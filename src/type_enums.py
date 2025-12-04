@@ -14,6 +14,7 @@ class RefactoringOperatorType(Enum):
     RM = "RenameMethod"
     EM = "ExtractMethod"
     EMR = "ExtractMethodWithReturn"
+    RDM = "RemoveDuplicateMethod"
 
 
 class NodeType(Enum):

@@ -7,6 +7,8 @@ for the given source code.
 import ast
 import random
 import string
+
+from src.refactoring_operator import RemoveDuplicateMethodOperator
 from type_enums import RefactoringOperatorType
 from refactoring_operator import (
     RefactoringOperator,
@@ -15,9 +17,10 @@ from refactoring_operator import (
     ReverseConditionalExpressionOperator,
     ConsolidateConditionalExpressionOperator,
     ReplaceNestedConditionalOperator,
-    RenameMethodOperator
+    RenameMethodOperator,
+    RemoveDuplicateMethodOperator
 )
-from util_ast import ast_equal, find_same_level_ifs
+from util_ast import ast_equal, ast_similar, find_same_level_ifs
 from util_llm import get_recommendations_for_function_rename
 
 
@@ -222,5 +225,28 @@ class CandidateGenerator:
                 candidates.append(RenameMethodOperator(no, name))
 
             node.name = orig_name
+
+        return candidates
+
+    @staticmethod
+    def _generate_rdm_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RemoveDuplicateMethodOperator]:
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        candidates = []
+
+        for i in range(len(function_nodes)):
+            for j in range(i+1, len(function_nodes)):
+                node1 = function_nodes[i]
+                node2 = function_nodes[j]
+
+                if ast_similar(node1, node2):
+                    # found duplicate functions
+                    # remove the latter one only
+                    no = node_order[node2]
+                    candidates.append(RemoveDuplicateMethodOperator(no))
 
         return candidates
