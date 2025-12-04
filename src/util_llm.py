@@ -1,5 +1,6 @@
-import ollama
 import time
+import re
+import ollama
 
 
 def get_recommendations_for_rename(context_code, target_lines):
@@ -78,17 +79,21 @@ def llm_readability_score(source_code):
     content = response['message']['content']
 
     lines = content.split('\n')
-    first = lines[0].strip()
+    first_line = lines[0].strip()
 
     # First line of response should follow 'Score: xx/100' format.
     # Returns 'xx' as points.
     # If not, this code consider it as a miss of llama-3 and ignore it.
     # In this case, we consider it as 0 point.
 
-    try:
-        score_str = first.replace("Score:", "").replace("/100", "").strip()
-        score = int(score_str)
-    except:
+    match = re.search(r'Score: (\d+)/100', first_line)
+
+    if match:
+        try:
+            score = int(match.group(1))
+        except ValueError:
+            score = 0
+    else:
         score = 0
 
     return score
