@@ -18,6 +18,15 @@ from refactoring_operator import (
     RenameMethodOperator,
     RemoveDuplicateMethodOperator
 )
+from candidate_collector import (
+    IMCollector,
+    DCCollector,
+    RCCollector,
+    CCCollector,
+    RNCCollector,
+    RMCollector,
+    RDMCollector
+)
 from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs
 from util_llm import get_recommendations_for_function_rename
@@ -95,18 +104,10 @@ class CandidateGenerator:
         return root, order_visitor.node_order
 
     @staticmethod
-    def _add_unique_candidate(candidates, seen_args, operator_class, *args):
-        key = args if len(args) > 1 else args[0]
-        if key not in seen_args:
-            candidates.append(operator_class(*args))
-            seen_args.add(key)
-
-    @staticmethod
     def _generate_dc_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[DecomposeConditionalOperator]:
-        candidates = []
-        seen_args = set()
+        collector = DCCollector()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -118,17 +119,15 @@ class CandidateGenerator:
             if isinstance(node.test, ast.BoolOp) and \
                     (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
                 no = node_order[node]
-                CandidateGenerator._add_unique_candidate(
-                    candidates, seen_args, DecomposeConditionalOperator, no)
+                collector.add(no)
 
-        return candidates
+        return collector.get_candidates()
 
     @staticmethod
     def _generate_im_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[InlineMethodOperator]:
-        candidates = []
-        seen_args = set()
+        collector = IMCollector()
 
         for node in root.body:
             if isinstance(node, ast.FunctionDef):
@@ -136,25 +135,22 @@ class CandidateGenerator:
                 # to handle simple inline method refactoring
                 if len(node.body) == 1:
                     no = node_order[node]
-                    CandidateGenerator._add_unique_candidate(
-                        candidates, seen_args, InlineMethodOperator, no)
+                    collector.add(no)
 
-        return candidates
+        return collector.get_candidates()
 
     @staticmethod
     def _generate_rc_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[ReverseConditionalExpressionOperator]:
-        candidates = []
-        seen_args = set()
+        collector = RCCollector()
 
         for node in ast.walk(root):
             if isinstance(node, ast.If):
                 no = node_order[node]
-                CandidateGenerator._add_unique_candidate(
-                    candidates, seen_args, ReverseConditionalExpressionOperator, no)
+                collector.add(no)
 
-        return candidates
+        return collector.get_candidates()
 
     @staticmethod
     def _generate_cc_candidates(
@@ -163,8 +159,7 @@ class CandidateGenerator:
         # Consider only about single if-elif-else structure,
         # with same body in each branch
         # so, we should check whether the body of each branch is same or not
-        candidates = []
-        seen_args = set()
+        collector = CCCollector()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -184,18 +179,16 @@ class CandidateGenerator:
 
             if length >= 2:
                 no = node_order[node]
-                CandidateGenerator._add_unique_candidate(
-                    candidates, seen_args, ConsolidateConditionalExpressionOperator, no, length)
+                collector.add(no, length)
 
-        return candidates
+        return collector.get_candidates()
 
     @staticmethod
     def _generate_rnc_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[ReplaceNestedConditionalOperator]:
         # consider continuous If statements, with no 'orelse' block
-        candidates = []
-        seen_args = set()
+        collector = RNCCollector()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.If):
@@ -227,17 +220,15 @@ class CandidateGenerator:
 
             if length >= 2:
                 no = node_order[node]
-                CandidateGenerator._add_unique_candidate(
-                    candidates, seen_args, ReplaceNestedConditionalOperator, no, length)
+                collector.add(no, length)
 
-        return candidates
+        return collector.get_candidates()
 
     @staticmethod
     def _generate_rm_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[RenameMethodOperator]:
-        candidates = []
-        seen_args = set()
+        collector = RMCollector()
 
         for node in ast.walk(root):
             if not isinstance(node, ast.FunctionDef):
@@ -255,19 +246,17 @@ class CandidateGenerator:
                 name = _name.strip()
                 if not name:
                     continue
-                CandidateGenerator._add_unique_candidate(
-                    candidates, seen_args, RenameMethodOperator, no, name)
+                collector.add(no, name)
 
             node.name = orig_name
 
-        return candidates
+        return collector.get_candidates()
 
     @staticmethod
     def _generate_rdm_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[RemoveDuplicateMethodOperator]:
-        candidates = []
-        seen_args = set()
+        collector = RDMCollector()
 
         function_nodes = []
 
@@ -285,7 +274,6 @@ class CandidateGenerator:
                     # remove the latter one only
                     no1 = node_order[node1]
                     no2 = node_order[node2]
-                    CandidateGenerator._add_unique_candidate(
-                        candidates, seen_args, RemoveDuplicateMethodOperator, no2, no1)
+                    collector.add(no2, no1)
 
-        return candidates
+        return collector.get_candidates()
