@@ -22,6 +22,57 @@ def ast_equal(node1, node2):
         return node1 == node2
 
 
+def ast_similar(node1, node2):
+    """
+    Compare two AST nodes for structural similarity,
+    ignoring specific identifier names.
+    The identifier names should have a one-to-one mapping.
+    """
+    map_id1_to_id2 = dict()
+    map_id2_to_id1 = dict()
+
+    def _map_ids(id1, id2):
+        nonlocal map_id1_to_id2, map_id2_to_id1
+
+        existing_id2 = map_id1_to_id2.get(id1)
+        existing_id1 = map_id2_to_id1.get(id2)
+
+        if existing_id2 is not None or existing_id1 is not None:
+            return existing_id2 == id2 and existing_id1 == id1
+
+        map_id1_to_id2[id1] = id2
+        map_id2_to_id1[id2] = id1
+        return True
+
+    def _ast_similar(node1, node2):
+        if type(node1) is not type(node2):
+            return False
+
+        if isinstance(node1, ast.AST):
+            for field in node1._fields:
+                if field == 'id':
+                    id1 = getattr(node1, field, None)
+                    id2 = getattr(node2, field, None)
+
+                    if not _map_ids(id1, id2):
+                        return False
+                else:
+                    if not _ast_similar(getattr(node1, field, None),
+                                        getattr(node2, field, None)):
+                        return False
+            return True
+
+        elif isinstance(node1, list):
+            if len(node1) != len(node2):
+                return False
+            return all(_ast_similar(n1, n2) for n1, n2 in zip(node1, node2))
+
+        else:
+            return node1 == node2
+
+    return _ast_similar(node1, node2)
+
+
 def find_same_level_ifs(if_node):
     # if-elif-elif-else structure -> if-orelse, in orelse if-orelse, ...
     # so, we need to traverse orelse till it is not an If node
