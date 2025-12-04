@@ -11,7 +11,7 @@ import random
 
 from candidate_generator import CandidateGenerator
 from refactoring_operator import RefactoringOperator
-
+from metric_calculator import MetricCalculator
 
 @dataclass
 class RefactoringPlan:
@@ -57,7 +57,6 @@ class NSGARunner:
             self.candidate_generator = candidate_generator
             self.applier = applier
             self.metric_calculator = metric_calculator
-            self.readability_scorer = readability_scorer
 
             self.pop_size = pop_size
             self.n_generations = n_generations
@@ -109,7 +108,6 @@ class NSGARunner:
             candidate_generator=make_random_plan,
             applier=applier,
             metric_calculator=metric_calculator,
-            readability_scorer=readability_scorer,
             pop_size=pop_size,
             n_generations=n_generations,
             cx_prob=cx_prob,
@@ -159,42 +157,38 @@ class NSGARunner:
             # Apply candidate refactorings
             transformed_code = self.applier(ind.plan)
 
-            # Compute metrics (structural + cost)
-            metrics = self.metric_calculator(transformed_code)
+            # Compute metrics 
+            cc, sloc, fan_in, llm_read = self.metric_calculator.calculate_metric(
+                transformed_code
+            )
 
-            # Example: combine into 2 structural/cost objectives
-            structural_score = self._structural_objective(metrics)
-            cost_score = self._cost_objective(metrics, ind.plan)
+            structural_score = self._structural_objective(cc, sloc)
+            cost_score = self._cost_objective(fan_in, ind.plan)
+            readability_obj = -float(llm_read)
 
-            # Readability (optional, we maximize it → use negative for minimization)
-            if self.readability_scorer is not None:
-                readability = self.readability_scorer(transformed_code)
-                readability_obj = -float(readability)  # because NSGA-II minimizes
-                objectives = (structural_score, cost_score, readability_obj)
-            else:
-                objectives = (structural_score, cost_score)
+            ind.objectives = (structural_score, cost_score, readability_obj)
 
-            ind.objectives = objectives
-
-    def _structural_objective(self, metrics: Dict[str, float]) -> float:
+    def _structural_objective(self, cc: float, sloc: float) -> float:
         """
         Combine structural metrics into a single value to minimize.
-        Weights to be adjusted after deciding which metrics to use.
-        Example metrics keys for now: "avg_cc", "max_cc", "max_nesting", "avg_loc"
+
+        For now:
+          structural = cc + alpha * sloc
+        alpha is a small weight so SLOC doesn't dominate; can be tuned later.
         """
-        cc = metrics.get("avg_cc", 0.0)
-        nesting = metrics.get("max_nesting", 0.0)
-        loc = metrics.get("avg_loc", 0.0)
-        return cc + nesting + loc
+        alpha = 0.1
+        return float(cc) + alpha * float(sloc)
     
-    def _cost_objective(self, metrics: Dict[str, float], plan: RefactoringPlan) -> float:
+    def _cost_objective(self, fan_in: float, plan: RefactoringPlan) -> float:
         """
-        Cost / regularization objective: fewer changes, fewer failed ops, etc.
-        Example metrics keys for now: "num_refactorings", "num_failed_ops"
+        Cost / regularization objective: penalize many refactorings and high fan-in.
+
+        For now:
+          cost = num_refactorings + beta * fan_in
         """
-        num_refactorings = metrics.get("num_refactorings", len(plan.genes))
-        num_failed = metrics.get("num_failed_ops", 0.0)
-        return float(num_refactorings) + 10.0 * float(num_failed)
+        beta = 0.1
+        num_refactorings = len(plan.genes)
+        return float(num_refactorings) + beta * float(fan_in)
 
     def _make_offspring(self, population: List[Individual]) -> List[Individual]:
         """
@@ -388,8 +382,3 @@ class NSGARunner:
         fronts = self._non_dominated_sort(population)
         return fronts[0] if fronts else []
     
-    """ def run_nsga(self, source_code):
-        # TODO: Implement NSGA-II algorithm logic
-        # It could use the CandidateGenerator, Applier, and MetricCalculator
-        # to find the optimal set of refactorings for the given source code
-        pass"""
