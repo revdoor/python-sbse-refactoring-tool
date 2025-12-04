@@ -7,6 +7,7 @@ for the given source code.
 import ast
 import random
 import string
+from collections.abc import Sequence
 
 from type_enums import RefactoringOperatorType
 from refactoring_operator import (
@@ -44,7 +45,7 @@ class OrderVisitor(ast.NodeVisitor):
 
 class CandidateGenerator:
     @staticmethod
-    def generate_candidates(source_code: str) -> list[RefactoringOperator]:
+    def generate_candidates(source_code: str) -> Sequence[RefactoringOperator]:
         # It should find various valid refactoring operators applicable to the source code
         overall_result = []
 
@@ -57,12 +58,16 @@ class CandidateGenerator:
         return overall_result
 
     @staticmethod
-    def generate_candidates_by_operator(source_code: str, operator: RefactoringOperatorType) -> list[RefactoringOperator]:
+    def generate_candidates_by_operator(
+            source_code: str, operator: RefactoringOperatorType
+    ) -> Sequence[RefactoringOperator]:
         root, node_order = CandidateGenerator._parse_and_order(source_code)
         return CandidateGenerator._generate_candidates_by_operator(root, node_order, operator)
 
     @staticmethod
-    def _generate_candidates_by_operator(root: ast.Module, node_order: dict[ast.AST, int], operator: RefactoringOperatorType) -> list[RefactoringOperator]:
+    def _generate_candidates_by_operator(
+            root: ast.Module, node_order: dict[ast.AST, int], operator: RefactoringOperatorType
+    ) -> Sequence[RefactoringOperator]:
         match operator:
             case RefactoringOperatorType.DC:
                 return CandidateGenerator._generate_dc_candidates(root, node_order)
@@ -89,7 +94,9 @@ class CandidateGenerator:
         return root, order_visitor.node_order
 
     @staticmethod
-    def _generate_dc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[DecomposeConditionalOperator]:
+    def _generate_dc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[DecomposeConditionalOperator]:
         candidates = []
 
         for node in ast.walk(root):
@@ -107,7 +114,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_im_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[InlineMethodOperator]:
+    def _generate_im_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[InlineMethodOperator]:
         candidates = []
 
         for node in root.body:
@@ -121,7 +130,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[ReverseConditionalExpressionOperator]:
+    def _generate_rc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ReverseConditionalExpressionOperator]:
         candidates = []
 
         for node in ast.walk(root):
@@ -132,7 +143,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_cc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[ConsolidateConditionalExpressionOperator]:
+    def _generate_cc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ConsolidateConditionalExpressionOperator]:
         # Consider only about single if-elif-else structure,
         # with same body in each branch
         # so, we should check whether the body of each branch is same or not
@@ -161,7 +174,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rnc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[ReplaceNestedConditionalOperator]:
+    def _generate_rnc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ReplaceNestedConditionalOperator]:
         # consider continuous If statements, with no 'orelse' block
         candidates = []
 
@@ -200,7 +215,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rm_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RenameMethodOperator]:
+    def _generate_rm_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RenameMethodOperator]:
         candidates = []
 
         for node in ast.walk(root):
@@ -228,7 +245,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rdm_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RemoveDuplicateMethodOperator]:
+    def _generate_rdm_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RemoveDuplicateMethodOperator]:
         function_nodes = []
 
         for node in ast.walk(root):
