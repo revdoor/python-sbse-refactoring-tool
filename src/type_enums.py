@@ -39,4 +39,6 @@ class RefactoringOperatorType(Enum):
 class NodeType(Enum):
     FunctionDef = "FunctionDef"
     If = "If"
+    While = "While"
+    For = "For"
     Assign = "Assign"

@@ -7,7 +7,7 @@ for the given source code.
 import ast
 from collections.abc import Sequence
 
-from type_enums import RefactoringOperatorType
+from type_enums import RefactoringOperatorType, NodeType
 from refactoring_operator import (
     RefactoringOperator,
     InlineMethodOperator,
@@ -18,12 +18,27 @@ from refactoring_operator import (
     RenameMethodOperator,
     RemoveDuplicateMethodOperator,
     ExtractMethodOperator,
-    ExtractMethodWithReturnOperator
+    ExtractMethodWithReturnOperator,
+    RenameFieldOperator
 )
 from dependency_checker import DependencyChecker
 from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
 from util_llm import get_recommendations_for_function_rename
+
+TARGET_ATTRS = {
+    ast.FunctionDef: ['body'],
+    ast.If: ['body', 'orelse'],
+    ast.While: ['body'],
+    ast.For: ['body']
+}
+
+CLS_TO_NODE_TYPE = {
+    ast.FunctionDef: NodeType.FunctionDef,
+    ast.If: NodeType.If,
+    ast.While: NodeType.While,
+    ast.For: NodeType.For
+}
 
 
 class OrderVisitor(ast.NodeVisitor):
@@ -287,18 +302,34 @@ class CandidateGenerator:
                 function_nodes.append(node)
 
         for function_node in function_nodes:
-            body = function_node.body
-
-            for i in range(len(body)):
-                for j in range(len(body)-1, i, -1):
-                    if DependencyChecker.is_dependency_free(
-                            function_node, function_node, 'body', i, j-i+1
-                    ):
-                        no = node_order[function_node]
-                        candidates.append(
-                            ExtractMethodOperator(no, i, j-i+1, 'name')
-                        )
+            for node in ast.walk(function_node):
+                attrs = None
+                node_type = None
+                for cls in TARGET_ATTRS.keys():
+                    if isinstance(node, cls):
+                        attrs = TARGET_ATTRS[cls]
+                        node_type = CLS_TO_NODE_TYPE[cls]
                         break
+
+                if attrs is None:
+                    continue
+
+                for attr_name in attrs:
+                    attr = getattr(node, attr_name)
+
+                    if len(attr) == 0:
+                        continue
+
+                    for i in range(len(attr)):
+                        for j in range(len(attr)-1, i, -1):
+                            if DependencyChecker.is_dependency_free(
+                                function_node, node, attr_name, i, j-i+1
+                            ):
+                                no = node_order[node]
+                                candidates.append(
+                                    ExtractMethodOperator(node_type, no, i, j-i+1, 'name')
+                                )
+                                break
 
         return candidates
 
