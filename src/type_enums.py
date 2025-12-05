@@ -24,6 +24,17 @@ class RefactoringOperatorType(Enum):
             RefactoringOperatorType.EMR,
         }
 
+    def is_implemented(self):
+        return self in {
+            RefactoringOperatorType.IM,
+            RefactoringOperatorType.DC,
+            RefactoringOperatorType.CC,
+            RefactoringOperatorType.RC,
+            RefactoringOperatorType.RNC,
+            RefactoringOperatorType.RM,
+            RefactoringOperatorType.RDM,
+        }
+
 
 class NodeType(Enum):
     FunctionDef = "FunctionDef"

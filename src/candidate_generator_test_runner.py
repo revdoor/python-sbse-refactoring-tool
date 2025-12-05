@@ -30,6 +30,8 @@ class TestData:
                 return TestData.get_test_data_for_rnc()
             case RefactoringOperatorType.RDM:
                 return TestData.get_test_data_for_rdm()
+            case RefactoringOperatorType.RM:
+                return TestData.get_test_data_for_rm()
             case _:
                 return []
 
@@ -85,8 +87,26 @@ class TestData:
             RemoveDuplicateMethodOperator(5, 4)
         ]
 
+    @staticmethod
+    def get_test_data_for_rm():
+        return [
+            RenameMethodOperator(1, '1'),
+            RenameMethodOperator(1, '2'),
+            RenameMethodOperator(1, '3'),
+            RenameMethodOperator(2, '1'),
+            RenameMethodOperator(2, '2'),
+            RenameMethodOperator(2, '3'),
+            RenameMethodOperator(3, '1'),
+            RenameMethodOperator(3, '2'),
+            RenameMethodOperator(3, '3')
+        ]
+
 
 def compare_with_test_data(operator, result):
+    if not operator.is_implemented():
+        print(f"!!!Operator {operator.value} is not implemented. Skipping comparison!!!")
+        return
+
     raw_test_data = TestData.get_test_data_for_operator(operator)
     test_data = [[td, False] for td in raw_test_data]
 
@@ -111,7 +131,7 @@ def compare_with_test_data(operator, result):
 
 
 if __name__ == "__main__":
-    enable_llm_usage = False
+    enable_llm_usage = True
 
     for operator in RefactoringOperatorType:
         print(f"Run for {operator.value}...")
