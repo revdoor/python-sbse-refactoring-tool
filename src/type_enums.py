@@ -12,6 +12,28 @@ class RefactoringOperatorType(Enum):
     RNC = "ReplaceNestedConditional"
     RF = "RenameField"
     RM = "RenameMethod"
+    EM = "ExtractMethod"
+    EMR = "ExtractMethodWithReturn"
+    RDM = "RemoveDuplicateMethod"
+
+    def uses_llm(self):
+        return self in {
+            RefactoringOperatorType.RF,
+            RefactoringOperatorType.RM,
+            # RefactoringOperatorType.EM,
+            # RefactoringOperatorType.EMR,
+        }
+
+    def is_implemented(self):
+        return self in {
+            RefactoringOperatorType.IM,
+            RefactoringOperatorType.DC,
+            RefactoringOperatorType.CC,
+            RefactoringOperatorType.RC,
+            RefactoringOperatorType.RNC,
+            RefactoringOperatorType.RM,
+            RefactoringOperatorType.RDM,
+        }
 
 
 class NodeType(Enum):

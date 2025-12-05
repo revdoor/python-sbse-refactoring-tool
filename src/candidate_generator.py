@@ -5,8 +5,8 @@ for the given source code.
 """
 
 import ast
-import random
-import string
+from collections.abc import Sequence
+
 from type_enums import RefactoringOperatorType
 from refactoring_operator import (
     RefactoringOperator,
@@ -15,51 +15,15 @@ from refactoring_operator import (
     ReverseConditionalExpressionOperator,
     ConsolidateConditionalExpressionOperator,
     ReplaceNestedConditionalOperator,
-    RenameMethodOperator
+    RenameMethodOperator,
+    RemoveDuplicateMethodOperator,
+    ExtractMethodOperator,
+    ExtractMethodWithReturnOperator
 )
+from dependency_checker import DependencyChecker
+from util import get_random_name
+from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
 from util_llm import get_recommendations_for_function_rename
-
-
-def ast_equal(node1, node2):
-    # recursively compare two AST nodes for equality
-    if type(node1) != type(node2):
-        return False
-
-    if isinstance(node1, ast.AST):
-        for field in node1._fields:
-            if not ast_equal(getattr(node1, field, None),
-                             getattr(node2, field, None)):
-                return False
-        return True
-
-    elif isinstance(node1, list):
-        if len(node1) != len(node2):
-            return False
-        return all(ast_equal(n1, n2) for n1, n2 in zip(node1, node2))
-
-    else:
-        return node1 == node2
-
-
-def find_same_level_ifs(if_node):
-    # if-elif-elif-else structure -> if-orelse, in orelse if-orelse, ...
-    # so, we need to traverse orelse till it is not an If node
-    # collect the conditions and bodies too
-
-    branches = []
-
-    cur_node = if_node
-    while isinstance(cur_node, ast.If):
-        branches.append((cur_node.test, cur_node.body))
-
-        if cur_node.orelse and len(cur_node.orelse) == 1 and isinstance(cur_node.orelse[0], ast.If):
-            cur_node = cur_node.orelse[0]
-        else:
-            if cur_node.orelse:
-                branches.append((None, cur_node.orelse))
-            break
-
-    return branches
 
 
 class OrderVisitor(ast.NodeVisitor):
@@ -83,7 +47,7 @@ class OrderVisitor(ast.NodeVisitor):
 
 class CandidateGenerator:
     @staticmethod
-    def generate_candidates(source_code: str) -> list[RefactoringOperator]:
+    def generate_candidates(source_code: str) -> Sequence[RefactoringOperator]:
         # It should find various valid refactoring operators applicable to the source code
         overall_result = []
 
@@ -96,12 +60,16 @@ class CandidateGenerator:
         return overall_result
 
     @staticmethod
-    def generate_candidates_by_operator(source_code: str, operator: RefactoringOperatorType) -> list[RefactoringOperator]:
+    def generate_candidates_by_operator(
+            source_code: str, operator: RefactoringOperatorType
+    ) -> Sequence[RefactoringOperator]:
         root, node_order = CandidateGenerator._parse_and_order(source_code)
         return CandidateGenerator._generate_candidates_by_operator(root, node_order, operator)
 
     @staticmethod
-    def _generate_candidates_by_operator(root: ast.Module, node_order: dict[ast.AST, int], operator: RefactoringOperatorType) -> list[RefactoringOperator]:
+    def _generate_candidates_by_operator(
+            root: ast.Module, node_order: dict[ast.AST, int], operator: RefactoringOperatorType
+    ) -> Sequence[RefactoringOperator]:
         match operator:
             case RefactoringOperatorType.DC:
                 return CandidateGenerator._generate_dc_candidates(root, node_order)
@@ -115,6 +83,10 @@ class CandidateGenerator:
                 return CandidateGenerator._generate_rnc_candidates(root, node_order)
             case RefactoringOperatorType.RM:
                 return CandidateGenerator._generate_rm_candidates(root, node_order)
+            case RefactoringOperatorType.RDM:
+                return CandidateGenerator._generate_rdm_candidates(root, node_order)
+            case RefactoringOperatorType.EM:
+                return CandidateGenerator._generate_em_candidates(root, node_order)
             case _:
                 return []
 
@@ -127,9 +99,10 @@ class CandidateGenerator:
 
         return root, order_visitor.node_order
 
-
     @staticmethod
-    def _generate_dc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[DecomposeConditionalOperator]:
+    def _generate_dc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[DecomposeConditionalOperator]:
         candidates = []
 
         for node in ast.walk(root):
@@ -147,21 +120,25 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_im_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[InlineMethodOperator]:
+    def _generate_im_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[InlineMethodOperator]:
         candidates = []
 
         for node in root.body:
             if isinstance(node, ast.FunctionDef):
                 # consider functions with single statement only
                 # to handle simple inline method refactoring
-                if len(node.body) == 1:
+                if len(node.body) == 1 and not _is_recursive(node):
                     no = node_order[node]
                     candidates.append(InlineMethodOperator(no))
 
         return candidates
 
     @staticmethod
-    def _generate_rc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[ReverseConditionalExpressionOperator]:
+    def _generate_rc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ReverseConditionalExpressionOperator]:
         candidates = []
 
         for node in ast.walk(root):
@@ -171,9 +148,10 @@ class CandidateGenerator:
 
         return candidates
 
-
     @staticmethod
-    def _generate_cc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[ConsolidateConditionalExpressionOperator]:
+    def _generate_cc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ConsolidateConditionalExpressionOperator]:
         # Consider only about single if-elif-else structure,
         # with same body in each branch
         # so, we should check whether the body of each branch is same or not
@@ -202,7 +180,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rnc_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[ReplaceNestedConditionalOperator]:
+    def _generate_rnc_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ReplaceNestedConditionalOperator]:
         # consider continuous If statements, with no 'orelse' block
         candidates = []
 
@@ -241,7 +221,9 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rm_candidates(root: ast.Module, node_order: dict[ast.AST, int]) -> list[RenameMethodOperator]:
+    def _generate_rm_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RenameMethodOperator]:
         candidates = []
 
         for node in ast.walk(root):
@@ -251,8 +233,7 @@ class CandidateGenerator:
             no = node_order[node]
 
             orig_name = node.name
-            length = 10
-            node.name = ''.join(random.choice(string.ascii_letters) for _ in range(length))
+            node.name = get_random_name()
 
             code = ast.unparse(node)
             recommendations = get_recommendations_for_function_rename(code).split('\n')[0]
@@ -261,9 +242,95 @@ class CandidateGenerator:
                 name = _name.strip()
                 if not name:
                     continue
-
                 candidates.append(RenameMethodOperator(no, name))
 
             node.name = orig_name
+
+        return candidates
+
+    @staticmethod
+    def _generate_rdm_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RemoveDuplicateMethodOperator]:
+        candidates = []
+
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        for i in range(len(function_nodes)):
+            for j in range(i+1, len(function_nodes)):
+                node1 = function_nodes[i]
+                node2 = function_nodes[j]
+
+                if ast_similar(node1, node2):
+                    # found duplicate functions
+                    # remove the latter one only
+                    no1 = node_order[node1]
+                    no2 = node_order[node2]
+                    candidates.append(RemoveDuplicateMethodOperator(no2, no1))
+
+        return candidates
+
+    @staticmethod
+    def _generate_em_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ExtractMethodOperator]:
+        candidates = []
+
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        for function_node in function_nodes:
+            body = function_node.body
+
+            for i in range(len(body)):
+                for j in range(len(body)-1, i, -1):
+                    if DependencyChecker.is_dependency_free(
+                            function_node, function_node, 'body', i, j-i+1
+                    ):
+                        no = node_order[function_node]
+                        candidates.append(
+                            ExtractMethodOperator(no, i, j-i+1, 'name')
+                        )
+                        break
+
+        return candidates
+
+    @staticmethod
+    def _generate_emr_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ExtractMethodWithReturnOperator]:
+        candidates = []
+
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        for function_node in function_nodes:
+            body = function_node.body
+
+            for i in range(len(body)):
+                for j in range(len(body)-1, i, -1):
+                    last_node = body[j]
+
+                    if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
+                        continue
+
+                    if DependencyChecker.is_dependency_free_with_return(
+                            function_node, function_node, 'body', i, j-i+1
+                    ):
+                        no = node_order[function_node]
+                        candidates.append(
+                            ExtractMethodWithReturnOperator(no, i, j-i+1, 'name')
+                        )
+                        break
 
         return candidates
