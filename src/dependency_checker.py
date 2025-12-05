@@ -3,31 +3,8 @@ This module defines the DependencyChecker class,
 which is used to check the dependency for the nodes between the surroundings.
 """
 import ast
-import random
-from pathlib import Path
+from store_load_visitor import StoreLoadVisitor
 from type_enums import RefactoringOperatorType
-
-
-class DependencyVisitor(ast.NodeVisitor):
-    def __init__(self, ignore_nodes=None):
-        self.store_ids = set()
-        self.load_ids = set()
-        self.ignore_nodes = ignore_nodes
-
-    def visit_Name(self, node):
-        if self.ignore_nodes and node in self.ignore_nodes:
-            return
-
-        if isinstance(node.ctx, ast.Load):
-            self.load_ids.add(node.id)
-        else:
-            self.store_ids.add(node.id)
-
-    def generic_visit(self, node):
-        if self.ignore_nodes and node in self.ignore_nodes:
-            return
-
-        super().generic_visit(node)
 
 
 class DependencyChecker:
@@ -58,13 +35,13 @@ class DependencyChecker:
         target_nodes = info['target_nodes']
         prev_nodes = info['prev_nodes']
 
-        target_visitor = DependencyVisitor()
+        target_visitor = StoreLoadVisitor()
         for target_node in target_nodes:
             target_visitor.visit(target_node)
 
         target_store_ids = target_visitor.store_ids
 
-        next_visitor = DependencyVisitor(prev_nodes + target_nodes)
+        next_visitor = StoreLoadVisitor(prev_nodes + target_nodes)
         next_visitor.visit(top_lvl_node)
 
         next_load_ids = next_visitor.load_ids
@@ -90,13 +67,13 @@ class DependencyChecker:
         if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
             return False
 
-        target_visitor = DependencyVisitor()
+        target_visitor = StoreLoadVisitor()
         for target_node in body_nodes:
             target_visitor.visit(target_node)
 
         target_store_ids = target_visitor.store_ids
 
-        next_visitor = DependencyVisitor(prev_nodes + target_nodes)
+        next_visitor = StoreLoadVisitor(prev_nodes + target_nodes)
         next_visitor.visit(top_lvl_node)
 
         next_load_ids = next_visitor.load_ids
