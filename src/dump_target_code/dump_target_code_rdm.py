@@ -29,3 +29,31 @@ def my_func_3(m, n):
         return "Zero"
     else:
         return "Positive"
+
+
+def factorial(n):
+    return 1 if n == 0 else n * factorial(n - 1)
+
+
+def fact(val):
+    return 1 if val == 0 else val * fact(val - 1)
+
+
+def not_exact_fact(num):
+    return 1 if num == 0 else num * fact(num - 1)
+
+
+def foo():
+    return bar()
+
+
+def fos():
+    return baz()
+
+
+def bar():
+    return 42
+
+
+def baz():
+    return 43
