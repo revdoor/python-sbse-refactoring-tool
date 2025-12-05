@@ -21,7 +21,8 @@ class RefactoringOperator(ABC):
             target_node_no,
             length=None,
             new_name=None,
-            reference_node_no=None
+            reference_node_no=None,
+            start_pos=None,
     ):
         self.operator_type = operator_type
         self.target_node_type = target_node_type
@@ -29,6 +30,7 @@ class RefactoringOperator(ABC):
         self.length = length
         self.new_name = new_name
         self.reference_node_no = reference_node_no
+        self.start_pos = start_pos
 
     def __str__(self):
         var_strs = [f"target={self.target_node_type.value}[{self.target_node_no}]"]
@@ -41,6 +43,9 @@ class RefactoringOperator(ABC):
 
         if self.reference_node_no is not None:
             var_strs.append(f"reference={self.target_node_type.value}[{self.reference_node_no}]")
+
+        if self.start_pos is not None:
+            var_strs.append(f"start_pos={self.start_pos}")
 
         var_str = ", ".join(var_strs)
 
@@ -57,16 +62,33 @@ class RefactoringOperator(ABC):
             self.target_node_no == other.target_node_no and
             self.length == other.length and
             # self.new_name == other.new_name and
-            self.reference_node_no == other.reference_node_no
+            self.reference_node_no == other.reference_node_no and
+            self.start_pos == other.start_pos
         )
 
 
 class ExtractMethodOperator(RefactoringOperator):
-    pass
+    def __init__(self, target_node_no, start_pos, length, new_name):
+        super().__init__(
+            operator_type=RefactoringOperatorType.EM,
+            target_node_type=NodeType.FunctionDef,
+            target_node_no=target_node_no,
+            length=length,
+            new_name=new_name,
+            start_pos=start_pos
+        )
 
 
 class ExtractMethodWithReturnOperator(RefactoringOperator):
-    pass
+    def __init__(self, target_node_no, start_pos, length, new_name):
+        super().__init__(
+            operator_type=RefactoringOperatorType.EMR,
+            target_node_type=NodeType.FunctionDef,
+            target_node_no=target_node_no,
+            length=length,
+            new_name=new_name,
+            start_pos=start_pos
+        )
 
 
 class RemoveDuplicateMethodOperator(RefactoringOperator):

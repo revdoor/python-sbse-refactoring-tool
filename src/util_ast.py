@@ -123,3 +123,12 @@ def find_same_level_ifs(if_node):
             break
 
     return branches
+
+
+def _is_recursive(func_node: ast.FunctionDef) -> bool:
+    func_name = func_node.name
+    for n in ast.walk(func_node):
+        if isinstance(n, ast.Call):
+            if isinstance(n.func, ast.Name) and n.func.id == func_name:
+                return True
+    return False

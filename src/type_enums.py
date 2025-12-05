@@ -20,8 +20,8 @@ class RefactoringOperatorType(Enum):
         return self in {
             RefactoringOperatorType.RF,
             RefactoringOperatorType.RM,
-            RefactoringOperatorType.EM,
-            RefactoringOperatorType.EMR,
+            # RefactoringOperatorType.EM,
+            # RefactoringOperatorType.EMR,
         }
 
     def is_implemented(self):

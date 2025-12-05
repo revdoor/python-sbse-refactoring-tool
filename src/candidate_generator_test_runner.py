@@ -131,7 +131,7 @@ def compare_with_test_data(operator, result):
 
 
 if __name__ == "__main__":
-    enable_llm_usage = True
+    enable_llm_usage = False
 
     for operator in RefactoringOperatorType:
         print(f"Run for {operator.value}...")

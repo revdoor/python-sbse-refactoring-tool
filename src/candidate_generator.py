@@ -16,10 +16,13 @@ from refactoring_operator import (
     ConsolidateConditionalExpressionOperator,
     ReplaceNestedConditionalOperator,
     RenameMethodOperator,
-    RemoveDuplicateMethodOperator
+    RemoveDuplicateMethodOperator,
+    ExtractMethodOperator,
+    ExtractMethodWithReturnOperator
 )
+from dependency_checker import DependencyChecker
 from util import get_random_name
-from util_ast import ast_equal, ast_similar, find_same_level_ifs
+from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
 from util_llm import get_recommendations_for_function_rename
 
 
@@ -82,6 +85,8 @@ class CandidateGenerator:
                 return CandidateGenerator._generate_rm_candidates(root, node_order)
             case RefactoringOperatorType.RDM:
                 return CandidateGenerator._generate_rdm_candidates(root, node_order)
+            case RefactoringOperatorType.EM:
+                return CandidateGenerator._generate_em_candidates(root, node_order)
             case _:
                 return []
 
@@ -124,7 +129,7 @@ class CandidateGenerator:
             if isinstance(node, ast.FunctionDef):
                 # consider functions with single statement only
                 # to handle simple inline method refactoring
-                if len(node.body) == 1:
+                if len(node.body) == 1 and not _is_recursive(node):
                     no = node_order[node]
                     candidates.append(InlineMethodOperator(no))
 
@@ -266,5 +271,66 @@ class CandidateGenerator:
                     no1 = node_order[node1]
                     no2 = node_order[node2]
                     candidates.append(RemoveDuplicateMethodOperator(no2, no1))
+
+        return candidates
+
+    @staticmethod
+    def _generate_em_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ExtractMethodOperator]:
+        candidates = []
+
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        for function_node in function_nodes:
+            body = function_node.body
+
+            for i in range(len(body)):
+                for j in range(len(body)-1, i, -1):
+                    if DependencyChecker.is_dependency_free(
+                            function_node, function_node, 'body', i, j-i+1
+                    ):
+                        no = node_order[function_node]
+                        candidates.append(
+                            ExtractMethodOperator(no, i, j-i+1, 'name')
+                        )
+                        break
+
+        return candidates
+
+    @staticmethod
+    def _generate_emr_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ExtractMethodWithReturnOperator]:
+        candidates = []
+
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        for function_node in function_nodes:
+            body = function_node.body
+
+            for i in range(len(body)):
+                for j in range(len(body)-1, i, -1):
+                    last_node = body[j]
+
+                    if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
+                        continue
+
+                    if DependencyChecker.is_dependency_free_with_return(
+                            function_node, function_node, 'body', i, j-i+1
+                    ):
+                        no = node_order[function_node]
+                        candidates.append(
+                            ExtractMethodWithReturnOperator(no, i, j-i+1, 'name')
+                        )
+                        break
 
         return candidates
