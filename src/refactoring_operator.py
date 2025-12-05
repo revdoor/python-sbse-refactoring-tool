@@ -46,6 +46,19 @@ class RefactoringOperator(ABC):
 
         return f"{self.operator_type.value}({var_str})"
 
+    def __eq__(self, other):
+        if not isinstance(other, RefactoringOperator):
+            return False
+
+        return (
+            self.operator_type == other.operator_type and
+            self.target_node_type == other.target_node_type and
+            self.target_node_no == other.target_node_no and
+            self.length == other.length and
+            self.new_name == other.new_name and
+            self.reference_node_no == other.reference_node_no
+        )
+
 
 class ExtractMethodOperator(RefactoringOperator):
     pass
