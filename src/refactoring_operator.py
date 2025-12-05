@@ -80,7 +80,15 @@ class ExtractMethodOperator(RefactoringOperator):
 
 
 class ExtractMethodWithReturnOperator(RefactoringOperator):
-    pass
+    def __init__(self, target_node_no, start_pos, length, new_name):
+        super().__init__(
+            operator_type=RefactoringOperatorType.EMR,
+            target_node_type=NodeType.FunctionDef,
+            target_node_no=target_node_no,
+            length=length,
+            new_name=new_name,
+            start_pos=start_pos
+        )
 
 
 class RemoveDuplicateMethodOperator(RefactoringOperator):

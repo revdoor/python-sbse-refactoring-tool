@@ -21,7 +21,7 @@ class RefactoringOperatorType(Enum):
             RefactoringOperatorType.RF,
             RefactoringOperatorType.RM,
             # RefactoringOperatorType.EM,
-            RefactoringOperatorType.EMR,
+            # RefactoringOperatorType.EMR,
         }
 
     def is_implemented(self):

@@ -290,7 +290,42 @@ class CandidateGenerator:
 
             for i in range(len(body)):
                 for j in range(len(body)-1, i, -1):
-                    if DependencyChecker.is_dependency_free(function_node, function_node, 'body', i, j-i+1):
+                    if DependencyChecker.is_dependency_free(
+                            function_node, function_node, 'body', i, j-i+1
+                    ):
+                        no = node_order[function_node]
+                        candidates.append(
+                            ExtractMethodOperator(no, i, j-i+1, 'name')
+                        )
+                        break
+
+        return candidates
+
+    @staticmethod
+    def _generate_emr_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ExtractMethodOperator]:
+        candidates = []
+
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        for function_node in function_nodes:
+            body = function_node.body
+
+            for i in range(len(body)):
+                for j in range(len(body)-1, i, -1):
+                    last_node = body[j]
+
+                    if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
+                        continue
+
+                    if DependencyChecker.is_dependency_free_with_return(
+                            function_node, function_node, 'body', i, j-i+1
+                    ):
                         no = node_order[function_node]
                         candidates.append(
                             ExtractMethodOperator(no, i, j-i+1, 'name')
