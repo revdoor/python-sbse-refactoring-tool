@@ -21,7 +21,7 @@ from refactoring_operator import (
 )
 from dependency_checker import DependencyChecker
 from util import get_random_name
-from util_ast import ast_equal, ast_similar, find_same_level_ifs
+from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
 from util_llm import get_recommendations_for_function_rename
 
 
@@ -128,7 +128,7 @@ class CandidateGenerator:
             if isinstance(node, ast.FunctionDef):
                 # consider functions with single statement only
                 # to handle simple inline method refactoring
-                if len(node.body) == 1:
+                if len(node.body) == 1 and not _is_recursive(node):
                     no = node_order[node]
                     candidates.append(InlineMethodOperator(no))
 
