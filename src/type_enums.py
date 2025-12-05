@@ -20,7 +20,7 @@ class RefactoringOperatorType(Enum):
         return self in {
             RefactoringOperatorType.RF,
             RefactoringOperatorType.RM,
-            RefactoringOperatorType.EM,
+            # RefactoringOperatorType.EM,
             RefactoringOperatorType.EMR,
         }
 

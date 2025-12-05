@@ -49,16 +49,28 @@ class DependencyChecker:
         target_store_ids = target_visitor.store_ids
         target_load_ids = target_visitor.load_ids
 
-        outer_visitor = DependencyVisitor(target_nodes)
-        outer_visitor.visit(top_lvl_node)
+        prev_visitor = DependencyVisitor(attr[idx:])
+        prev_visitor.visit(top_lvl_node)
 
-        outer_store_ids = outer_visitor.store_ids
-        outer_load_ids = outer_visitor.load_ids
+        next_visitor = DependencyVisitor(attr[:idx + length])
+        next_visitor.visit(top_lvl_node)
 
-        print("Target store IDs:", target_store_ids)
-        print("Target load IDs:", target_load_ids)
-        print("Outer store IDs:", outer_store_ids)
-        print("Outer load IDs:", outer_load_ids)
+        prev_store_ids = prev_visitor.store_ids
+        prev_load_ids = prev_visitor.load_ids
+
+        next_store_ids = next_visitor.store_ids
+        next_load_ids = next_visitor.load_ids
+
+        # dependency free: the stored in target should not be used outside, after the target
+
+        # print(f"  Target store IDs: {target_store_ids}")
+        # print(f"  Target load IDs: {target_load_ids}")
+        # print(f"  Previous load IDs: {prev_load_ids}")
+        # print(f"  Previous store IDs: {prev_store_ids}")
+        # print(f"  Next load IDs: {next_load_ids}")
+        # print(f"  Next store IDs: {next_store_ids}")
+
+        return target_store_ids.isdisjoint(next_load_ids)
 
     @staticmethod
     def _dependency(node):
@@ -75,7 +87,15 @@ if __name__ == "__main__":
     for operator in RefactoringOperatorType:
         print(f"Dependency check for {operator.value}...")
 
-        with open(script_dir / f'dump_target_code/dump_target_code_{operator.name.lower()}.py', 'r') as f:
+        script_dir = Path(__file__).parent.resolve()
+        file_path = script_dir / f'dump_target_code/dump_target_code_{operator.name.lower()}.py'
+
+        if not file_path.exists():
+            print(f"!!!Dump code for {operator.value} does not exist. Skipping!!!")
+            print()
+            continue
+
+        with open(file_path, 'r') as f:
             source_code = f.read()
 
         root = ast.parse(source_code)

@@ -16,8 +16,10 @@ from refactoring_operator import (
     ConsolidateConditionalExpressionOperator,
     ReplaceNestedConditionalOperator,
     RenameMethodOperator,
-    RemoveDuplicateMethodOperator
+    RemoveDuplicateMethodOperator,
+    ExtractMethodOperator
 )
+from dependency_checker import DependencyChecker
 from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs
 from util_llm import get_recommendations_for_function_rename
@@ -82,6 +84,8 @@ class CandidateGenerator:
                 return CandidateGenerator._generate_rm_candidates(root, node_order)
             case RefactoringOperatorType.RDM:
                 return CandidateGenerator._generate_rdm_candidates(root, node_order)
+            case RefactoringOperatorType.EM:
+                return CandidateGenerator._generate_em_candidates(root, node_order)
             case _:
                 return []
 
@@ -266,5 +270,31 @@ class CandidateGenerator:
                     no1 = node_order[node1]
                     no2 = node_order[node2]
                     candidates.append(RemoveDuplicateMethodOperator(no2, no1))
+
+        return candidates
+
+    @staticmethod
+    def _generate_em_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[ExtractMethodOperator]:
+        candidates = []
+
+        function_nodes = []
+
+        for node in ast.walk(root):
+            if isinstance(node, ast.FunctionDef):
+                function_nodes.append(node)
+
+        for function_node in function_nodes:
+            body = function_node.body
+
+            for i in range(len(body)):
+                for j in range(len(body)-1, i, -1):
+                    if DependencyChecker.is_dependency_free(function_node, function_node, 'body', i, j-i+1):
+                        no = node_order[function_node]
+                        candidates.append(
+                            ExtractMethodOperator(no, i, j-i+1, 'name')
+                        )
+                        break
 
         return candidates
