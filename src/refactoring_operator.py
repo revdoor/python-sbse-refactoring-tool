@@ -87,7 +87,14 @@ class ExtractMethodOperator(RefactoringOperator):
 
 
 class ExtractMethodWithReturnOperator(RefactoringOperator):
-    def __init__(self, target_node_no, start_pos, length, new_name):
+    def __init__(self, target_node_typ, target_node_no, start_pos, length, new_name):
+        assert target_node_typ in (
+            NodeType.FunctionDef,
+            NodeType.If,
+            NodeType.For,
+            NodeType.While
+        )
+
         super().__init__(
             operator_type=RefactoringOperatorType.EMR,
             target_node_type=NodeType.FunctionDef,

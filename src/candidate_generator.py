@@ -346,22 +346,37 @@ class CandidateGenerator:
                 function_nodes.append(node)
 
         for function_node in function_nodes:
-            body = function_node.body
+            for node in ast.walk(function_node):
+                attrs = None
+                node_type = None
+                for cls in TARGET_ATTRS.keys():
+                    if isinstance(node, cls):
+                        attrs = TARGET_ATTRS[cls]
+                        node_type = CLS_TO_NODE_TYPE[cls]
+                        break
 
-            for i in range(len(body)):
-                for j in range(len(body)-1, i, -1):
-                    last_node = body[j]
+                if attrs is None:
+                    continue
 
+                for attr_name in attrs:
+                    attr = getattr(node, attr_name)
+
+                    if len(attr) == 0:
+                        continue
+
+                    last_node = attr[-1]
                     if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
                         continue
 
-                    if DependencyChecker.is_dependency_free_with_return(
-                            function_node, function_node, 'body', i, j-i+1
-                    ):
-                        no = node_order[function_node]
-                        candidates.append(
-                            ExtractMethodWithReturnOperator(no, i, j-i+1, 'name')
-                        )
-                        break
+                    for i in range(len(attr)):
+                        for j in range(len(attr)-1, i, -1):
+                            if DependencyChecker.is_dependency_free_with_return(
+                                function_node, node, attr_name, i, j-i+1
+                            ):
+                                no = node_order[node]
+                                candidates.append(
+                                    ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, 'name')
+                                )
+                                break
 
         return candidates
