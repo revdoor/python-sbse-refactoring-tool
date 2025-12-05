@@ -32,82 +32,73 @@ class DependencyVisitor(ast.NodeVisitor):
 
 class DependencyChecker:
     @staticmethod
-    def is_dependency_free(top_lvl_node, parent_node, attr_name, idx, length):
+    def _get_target_info(parent_node, attr_name, idx, length):
         if not hasattr(parent_node, attr_name):
-            return False
+            return None
 
         attr = getattr(parent_node, attr_name)
         if len(attr) < idx + length:
+            return None
+
+        return {
+            'attr': attr,
+            'target_nodes': attr[idx: idx + length],
+            'prev_nodes': attr[:idx],
+            'next_nodes': attr[idx + length:]
+        }
+
+    @staticmethod
+    def is_dependency_free(top_lvl_node, parent_node, attr_name, idx, length):
+        # dependency free: the stored in target should not be used outside, after the target
+
+        info = DependencyChecker._get_target_info(parent_node, attr_name, idx, length)
+        if info is None:
             return False
 
-        target_nodes = attr[idx: idx + length]
+        target_nodes = info['target_nodes']
+        prev_nodes = info['prev_nodes']
 
         target_visitor = DependencyVisitor()
         for target_node in target_nodes:
             target_visitor.visit(target_node)
 
         target_store_ids = target_visitor.store_ids
-        target_load_ids = target_visitor.load_ids
 
-        prev_visitor = DependencyVisitor(attr[idx:])
-        prev_visitor.visit(top_lvl_node)
-
-        next_visitor = DependencyVisitor(attr[:idx + length])
+        next_visitor = DependencyVisitor(prev_nodes + target_nodes)
         next_visitor.visit(top_lvl_node)
 
-        prev_store_ids = prev_visitor.store_ids
-        prev_load_ids = prev_visitor.load_ids
-
-        next_store_ids = next_visitor.store_ids
         next_load_ids = next_visitor.load_ids
-
-        # dependency free: the stored in target should not be used outside, after the target
-
-        # print(f"  Target store IDs: {target_store_ids}")
-        # print(f"  Target load IDs: {target_load_ids}")
-        # print(f"  Previous load IDs: {prev_load_ids}")
-        # print(f"  Previous store IDs: {prev_store_ids}")
-        # print(f"  Next load IDs: {next_load_ids}")
-        # print(f"  Next store IDs: {next_store_ids}")
 
         return target_store_ids.isdisjoint(next_load_ids)
 
     @staticmethod
-    def _dependency(node):
-        visitor = DependencyVisitor()
+    def is_dependency_free_with_return(top_lvl_node, parent_node, attr_name, idx, length):
+        # dependency free: the stored in target should not be used outside, after the target
+        # consider only when the last target node is Assign or AugAssign
+        # and suppose that we extract the method with return statement
 
-        visitor.visit(node)
+        info = DependencyChecker._get_target_info(parent_node, attr_name, idx, length)
+        if info is None:
+            return False
 
-        return visitor.store_ids, visitor.load_ids
+        target_nodes = info['target_nodes']
+        prev_nodes = info['prev_nodes']
 
+        last_node = target_nodes[-1]
+        body_nodes = target_nodes[:-1]
 
-if __name__ == "__main__":
-    script_dir = Path(__file__).parent.resolve()
+        if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
+            return False
 
-    for operator in RefactoringOperatorType:
-        print(f"Dependency check for {operator.value}...")
+        target_visitor = DependencyVisitor()
+        for target_node in body_nodes:
+            target_visitor.visit(target_node)
 
-        script_dir = Path(__file__).parent.resolve()
-        file_path = script_dir / f'dump_target_code/dump_target_code_{operator.name.lower()}.py'
+        target_store_ids = target_visitor.store_ids
 
-        if not file_path.exists():
-            print(f"!!!Dump code for {operator.value} does not exist. Skipping!!!")
-            print()
-            continue
+        next_visitor = DependencyVisitor(prev_nodes + target_nodes)
+        next_visitor.visit(top_lvl_node)
 
-        with open(file_path, 'r') as f:
-            source_code = f.read()
+        next_load_ids = next_visitor.load_ids
 
-        root = ast.parse(source_code)
-
-        for _node in ast.walk(root):
-            if isinstance(_node, ast.FunctionDef):
-                body = _node.body
-
-                i, j = random.choices(range(len(body)), k=2)
-                if i > j:
-                    i, j = j, i
-
-                print(f"Function {_node.name}, from statement {i} to {j}:")
-                DependencyChecker.is_dependency_free(_node, _node, 'body', i, j - i + 1)
-                print()
+        return target_store_ids.isdisjoint(next_load_ids)
