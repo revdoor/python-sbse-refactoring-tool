@@ -78,15 +78,12 @@ def ast_similar(target1, target2):
                     name1 = getattr(node1, field, _MISSING)
                     name2 = getattr(node2, field, _MISSING)
 
-                    if name1 == target1.name:
-                        if name2 != target2.name:
-                            return False
-                    elif name2 == target2.name:
-                        if name1 != target1.name:
-                            return False
-                    else:
-                        if name1 != name2:
-                            return False
+                    if name1 == target1.name and name2 == target2.name:
+                        continue
+                    elif name1 == target1.name or name2 == target2.name:
+                        return False
+                    if name1 != name2:
+                        return False
                 else:
                     if not _ast_similar(getattr(node1, field, _MISSING),
                                         getattr(node2, field, _MISSING),
