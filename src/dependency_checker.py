@@ -4,7 +4,6 @@ which is used to check the dependency for the nodes between the surroundings.
 """
 import ast
 from store_load_visitor import StoreLoadVisitor
-from type_enums import RefactoringOperatorType
 
 
 class DependencyChecker:
