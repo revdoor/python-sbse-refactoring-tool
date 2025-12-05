@@ -17,7 +17,8 @@ from refactoring_operator import (
     ReplaceNestedConditionalOperator,
     RenameMethodOperator,
     RemoveDuplicateMethodOperator,
-    ExtractMethodOperator
+    ExtractMethodOperator,
+    ExtractMethodWithReturnOperator
 )
 from dependency_checker import DependencyChecker
 from util import get_random_name
@@ -304,7 +305,7 @@ class CandidateGenerator:
     @staticmethod
     def _generate_emr_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
-    ) -> list[ExtractMethodOperator]:
+    ) -> list[ExtractMethodWithReturnOperator]:
         candidates = []
 
         function_nodes = []
@@ -328,7 +329,7 @@ class CandidateGenerator:
                     ):
                         no = node_order[function_node]
                         candidates.append(
-                            ExtractMethodOperator(no, i, j-i+1, 'name')
+                            ExtractMethodWithReturnOperator(no, i, j-i+1, 'name')
                         )
                         break
 
