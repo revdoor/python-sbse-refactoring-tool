@@ -35,7 +35,7 @@ from util_ast import (
 )
 from util_llm import (
     get_recommendation_for_function_rename,
-    get_recommendations_for_field_rename,
+    get_recommendation_for_field_rename,
     extract_names_from_recommendation,
     get_recommendation_for_function_name
 )
@@ -435,7 +435,7 @@ class CandidateGenerator:
             no = node_order[function_node]
 
             for name in assigned_ids.union(args):
-                recommendation = get_recommendations_for_field_rename(function_code, name)
+                recommendation = get_recommendation_for_field_rename(function_code, name)
 
                 for new_name in extract_names_from_recommendation(recommendation):
                     if name == new_name:

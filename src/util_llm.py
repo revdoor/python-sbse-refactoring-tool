@@ -50,7 +50,7 @@ def get_recommendation_for_function_rename(function_code):
     return response['message']['content']
 
 
-def get_recommendations_for_field_rename(function_code, field_name):
+def get_recommendation_for_field_rename(function_code, field_name):
     prompt = f"""Suggest better names for the given field.
 
     Code:
