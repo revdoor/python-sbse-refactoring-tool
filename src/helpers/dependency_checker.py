@@ -50,7 +50,7 @@ class DependencyChecker:
     @staticmethod
     def is_dependency_free_with_return(top_lvl_node, parent_node, attr_name, idx, length):
         # dependency free: the stored in target should not be used outside, after the target
-        # consider only when the last target node is Assign or AugAssign
+        # consider only when the last target node is Assign or AugAssign or return
         # and suppose that we extract the method with return statement
 
         info = DependencyChecker._get_target_info(parent_node, attr_name, idx, length)
@@ -64,6 +64,9 @@ class DependencyChecker:
         body_nodes = target_nodes[:-1]
 
         if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
+            return False
+
+        if not isinstance(last_node, ast.Return):
             return False
 
         target_visitor = StoreLoadVisitor()

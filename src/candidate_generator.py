@@ -375,6 +375,10 @@ class CandidateGenerator:
 
                     for i in range(len(attr)):
                         for j in range(len(attr)-1, i, -1):
+                            stmts = attr[i:j]  # in EMR the final line could be a return statement
+                            if ControlFlowChecker.has_return(stmts):
+                                continue
+
                             if DependencyChecker.is_dependency_free_with_return(
                                 function_node, node, attr_name, i, j-i+1
                             ):
