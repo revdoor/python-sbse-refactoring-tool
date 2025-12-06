@@ -11,10 +11,14 @@ if __name__ == "__main__":
     applier = Applier()
 
     test_operators = [
-        # RefactoringOperatorType.RC,
-        # RefactoringOperatorType.CC,
-        # RefactoringOperatorType.RNC,
+        RefactoringOperatorType.RC,
+        RefactoringOperatorType.CC,
+        RefactoringOperatorType.RNC,
         RefactoringOperatorType.RM,
+        RefactoringOperatorType.IM,
+        RefactoringOperatorType.RDM,
+        RefactoringOperatorType.EM,
+        RefactoringOperatorType.EMR,
     ]
 
     for operator in test_operators:
