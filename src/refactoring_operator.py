@@ -19,7 +19,7 @@ class RefactoringOperator(ABC):
             old_name=None,
             new_name=None,
             reference_node_no=None,
-            start_pos=None,
+            start_idx=None,
     ):
         self.operator_type = operator_type
         self.target_node_type = target_node_type
@@ -28,7 +28,7 @@ class RefactoringOperator(ABC):
         self.old_name = old_name
         self.new_name = new_name
         self.reference_node_no = reference_node_no
-        self.start_pos = start_pos
+        self.start_idx = start_idx
 
     def __str__(self):
         var_strs = [f"target={self.target_node_type.value}[{self.target_node_no}]"]
@@ -45,8 +45,8 @@ class RefactoringOperator(ABC):
         if self.reference_node_no is not None:
             var_strs.append(f"reference={self.target_node_type.value}[{self.reference_node_no}]")
 
-        if self.start_pos is not None:
-            var_strs.append(f"start_pos={self.start_pos}")
+        if self.start_idx is not None:
+            var_strs.append(f"start_pos={self.start_idx}")
 
         var_str = ", ".join(var_strs)
 
@@ -64,12 +64,12 @@ class RefactoringOperator(ABC):
             self.length == other.length and
             # self.new_name == other.new_name and
             self.reference_node_no == other.reference_node_no and
-            self.start_pos == other.start_pos
+            self.start_idx == other.start_idx
         )
 
 
 class ExtractMethodOperator(RefactoringOperator):
-    def __init__(self, target_node_typ, target_node_no, start_pos, length, new_name):
+    def __init__(self, target_node_typ, target_node_no, start_idx, length, new_name):
         assert target_node_typ in (
             NodeType.FunctionDef,
             NodeType.If,
@@ -83,12 +83,12 @@ class ExtractMethodOperator(RefactoringOperator):
             target_node_no=target_node_no,
             length=length,
             new_name=new_name,
-            start_pos=start_pos
+            start_idx=start_idx
         )
 
 
 class ExtractMethodWithReturnOperator(RefactoringOperator):
-    def __init__(self, target_node_typ, target_node_no, start_pos, length, new_name):
+    def __init__(self, target_node_typ, target_node_no, start_idx, length, new_name):
         assert target_node_typ in (
             NodeType.FunctionDef,
             NodeType.If,
@@ -102,7 +102,7 @@ class ExtractMethodWithReturnOperator(RefactoringOperator):
             target_node_no=target_node_no,
             length=length,
             new_name=new_name,
-            start_pos=start_pos
+            start_idx=start_idx
         )
 
 

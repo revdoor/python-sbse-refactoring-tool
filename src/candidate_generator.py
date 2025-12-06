@@ -22,6 +22,7 @@ from refactoring_operator import (
     RenameFieldOperator
 )
 from dependency_checker import DependencyChecker
+from control_flow_checker import ControlFlowChecker
 from store_load_visitor import StoreLoadVisitor
 from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
@@ -326,6 +327,10 @@ class CandidateGenerator:
 
                     for i in range(len(attr)):
                         for j in range(len(attr)-1, i, -1):
+                            stmts = attr[i:j+1]
+                            if ControlFlowChecker.has_return(stmts):
+                                continue
+
                             if DependencyChecker.is_dependency_free(
                                 function_node, node, attr_name, i, j-i+1
                             ):
