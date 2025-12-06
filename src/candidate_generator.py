@@ -22,9 +22,14 @@ from refactoring_operator import (
     RenameFieldOperator
 )
 from dependency_checker import DependencyChecker
+from store_load_visitor import StoreLoadVisitor
 from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
-from util_llm import get_recommendations_for_function_rename
+from util_llm import (
+    get_recommendation_for_function_rename,
+    get_recommendations_for_field_rename,
+    extract_names_from_recommendation
+)
 
 TARGET_ATTRS = {
     ast.FunctionDef: ['body'],
@@ -251,12 +256,9 @@ class CandidateGenerator:
             node.name = get_random_name()
 
             code = ast.unparse(node)
-            recommendations = get_recommendations_for_function_rename(code).split('\n')[0]
+            recommendation = get_recommendation_for_function_rename(code)
 
-            for _name in recommendations.split(","):
-                name = _name.strip()
-                if not name:
-                    continue
+            for name in extract_names_from_recommendation(recommendation):
                 candidates.append(RenameMethodOperator(no, name))
 
             node.name = orig_name
@@ -264,16 +266,22 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rdm_candidates(
-            root: ast.Module, node_order: dict[ast.AST, int]
-    ) -> list[RemoveDuplicateMethodOperator]:
-        candidates = []
-
+    def _get_function_nodes(root: ast.Module) -> list[ast.FunctionDef]:
         function_nodes = []
 
         for node in ast.walk(root):
             if isinstance(node, ast.FunctionDef):
                 function_nodes.append(node)
+
+        return function_nodes
+
+    @staticmethod
+    def _generate_rdm_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RemoveDuplicateMethodOperator]:
+        candidates = []
+
+        function_nodes = CandidateGenerator._get_function_nodes(root)
 
         for i in range(len(function_nodes)):
             for j in range(i+1, len(function_nodes)):
@@ -295,11 +303,7 @@ class CandidateGenerator:
     ) -> list[ExtractMethodOperator]:
         candidates = []
 
-        function_nodes = []
-
-        for node in ast.walk(root):
-            if isinstance(node, ast.FunctionDef):
-                function_nodes.append(node)
+        function_nodes = CandidateGenerator._get_function_nodes(root)
 
         for function_node in function_nodes:
             for node in ast.walk(function_node):
@@ -339,11 +343,7 @@ class CandidateGenerator:
     ) -> list[ExtractMethodWithReturnOperator]:
         candidates = []
 
-        function_nodes = []
-
-        for node in ast.walk(root):
-            if isinstance(node, ast.FunctionDef):
-                function_nodes.append(node)
+        function_nodes = CandidateGenerator._get_function_nodes(root)
 
         for function_node in function_nodes:
             for node in ast.walk(function_node):
@@ -378,5 +378,41 @@ class CandidateGenerator:
                                     ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, 'name')
                                 )
                                 break
+
+        return candidates
+
+    @staticmethod
+    def _generate_rf_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RenameFieldOperator]:
+        # arguments + stored vars
+        candidates = []
+
+        function_nodes = CandidateGenerator._get_function_nodes(root)
+
+        for function_node in function_nodes:
+            visitor = StoreLoadVisitor()
+            visitor.visit(function_node)
+
+            assigned_ids = visitor.store_ids - visitor.load_ids
+
+            args = set(arg.arg for arg in function_node.args.args)
+            if function_node.args.vararg:
+                args.add(function_node.args.vararg.arg)
+            if function_node.args.kwarg:
+                args.add(function_node.args.kwarg.arg)
+            args.update(arg.arg for arg in function_node.args.kwonlyargs)
+
+            function_code = ast.unparse(function_node)
+            no = node_order[function_node]
+
+            for name in assigned_ids.union(args):
+                recommendation = get_recommendations_for_field_rename(function_code, name)
+
+                for new_name in extract_names_from_recommendation(recommendation):
+                    if name == new_name:
+                        continue
+
+                    candidates.append(RenameFieldOperator(no, name, new_name))
 
         return candidates

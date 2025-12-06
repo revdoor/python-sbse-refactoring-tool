@@ -42,3 +42,8 @@ class NodeType(Enum):
     While = "While"
     For = "For"
     Assign = "Assign"
+    AugAssign = "AugAssign"
+    Arg = "Arg"
+    VarArg = "VarArg"
+    KwArg = "KwArg"
+    KwOnlyArg = "KwOnlyArg"

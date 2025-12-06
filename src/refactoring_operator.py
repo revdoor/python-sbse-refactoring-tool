@@ -4,10 +4,6 @@ which are used to represent various refactoring operators that can be used
 in SBSE process.
 """
 
-"""
-impl order: DC -> IM -> CC -> RNC -> RM / RF -> EM
-"""
-
 from abc import ABC
 from type_enums import RefactoringOperatorType, NodeType
 
@@ -20,6 +16,7 @@ class RefactoringOperator(ABC):
             target_node_type,
             target_node_no,
             length=None,
+            old_name=None,
             new_name=None,
             reference_node_no=None,
             start_pos=None,
@@ -28,6 +25,7 @@ class RefactoringOperator(ABC):
         self.target_node_type = target_node_type
         self.target_node_no = target_node_no
         self.length = length
+        self.old_name = old_name
         self.new_name = new_name
         self.reference_node_no = reference_node_no
         self.start_pos = start_pos
@@ -37,6 +35,9 @@ class RefactoringOperator(ABC):
 
         if self.length is not None:
             var_strs.append(f"length={self.length}")
+
+        if self.old_name is not None:
+            var_strs.append(f"old_name={self.old_name}")
 
         if self.new_name is not None:
             var_strs.append(f"new_name={self.new_name}")
@@ -126,11 +127,12 @@ class RenameMethodOperator(RefactoringOperator):
 
 
 class RenameFieldOperator(RefactoringOperator):
-    def __init__(self, target_node_no, new_name):
+    def __init__(self, target_node_no, old_name, new_name):
         super().__init__(
             operator_type=RefactoringOperatorType.RF,
-            target_node_type=NodeType.Assign,
+            target_node_type=NodeType.FunctionDef,
             target_node_no=target_node_no,
+            old_name=old_name,
             new_name=new_name
         )
 
