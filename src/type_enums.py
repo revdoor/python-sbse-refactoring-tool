@@ -20,8 +20,8 @@ class RefactoringOperatorType(Enum):
         return self in {
             RefactoringOperatorType.RF,
             RefactoringOperatorType.RM,
-            # RefactoringOperatorType.EM,
-            # RefactoringOperatorType.EMR,
+            RefactoringOperatorType.EM,
+            RefactoringOperatorType.EMR,
         }
 
     def is_implemented(self):
@@ -39,4 +39,11 @@ class RefactoringOperatorType(Enum):
 class NodeType(Enum):
     FunctionDef = "FunctionDef"
     If = "If"
+    While = "While"
+    For = "For"
     Assign = "Assign"
+    AugAssign = "AugAssign"
+    Arg = "Arg"
+    VarArg = "VarArg"
+    KwArg = "KwArg"
+    KwOnlyArg = "KwOnlyArg"

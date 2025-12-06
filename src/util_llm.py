@@ -3,7 +3,7 @@ import re
 import ollama
 
 
-def get_recommendations_for_rename(context_code, target_lines):
+def get_recommendation_for_rename(context_code, target_lines):
     prompt = f"""Suggest better names for the target lines.
 
 Context Code:
@@ -28,7 +28,7 @@ Names only, no 'def' or '='
     return response['message']['content']
 
 
-def get_recommendations_for_function_rename(function_code):
+def get_recommendation_for_function_rename(function_code):
     prompt = f"""Suggest better names for the given function.
 
     Code:
@@ -48,6 +48,66 @@ def get_recommendations_for_function_rename(function_code):
     )
 
     return response['message']['content']
+
+
+def get_recommendation_for_field_rename(function_code, field_name):
+    prompt = f"""Suggest better names for the given field.
+
+    Code:
+    {function_code}
+    Target field:
+    {field_name}
+
+    Suggest 3 better names only, with the order of preference, separated by commas.
+    Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
+    Names only, no 'def'.
+    """
+
+    response = ollama.chat(
+        model='llama3',
+        messages=[
+            {'role': 'system', 'content': 'You are a Python naming expert.'},
+            {'role': 'user', 'content': prompt}
+        ]
+    )
+
+    return response['message']['content']
+
+
+def get_recommendation_for_function_name(function_code):
+    prompt = f"""Suggest names for the given function.
+
+    Code:
+    {function_code}
+
+    Suggest 3 names only, with the order of preference, separated by commas.
+    Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
+    Names only, no 'def'.
+    """
+
+    response = ollama.chat(
+        model='llama3',
+        messages=[
+            {'role': 'system', 'content': 'You are a Python naming expert.'},
+            {'role': 'user', 'content': prompt}
+        ]
+    )
+
+    return response['message']['content']
+
+
+def extract_names_from_recommendation(recommendation):
+    result_line = recommendation.split('\n')[0]
+
+    names = []
+
+    for _name in result_line.split(","):
+        name = _name.strip()
+        if not name:
+            continue
+        names.append(name)
+
+    return names
 
 
 def llm_readability_score(source_code):
@@ -141,7 +201,7 @@ def monte_carlo_pi(num_samples):
     for line in target_lines:
         print(line)
 
-    recommendations = get_recommendations_for_rename(context, target_lines)
+    recommendations = get_recommendation_for_rename(context, target_lines)
 
     print("Recommended names for the target line:")
     print(recommendations)
@@ -159,7 +219,7 @@ return False"""
 
     start_time = time.time()
 
-    recommendations = get_recommendations_for_function_rename(ft_code)
+    recommendations = get_recommendation_for_function_rename(ft_code)
 
     print("Recommended names:")
     print(recommendations)

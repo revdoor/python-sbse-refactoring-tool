@@ -7,7 +7,7 @@ for the given source code.
 import ast
 from collections.abc import Sequence
 
-from type_enums import RefactoringOperatorType
+from type_enums import RefactoringOperatorType, NodeType
 from refactoring_operator import (
     RefactoringOperator,
     InlineMethodOperator,
@@ -18,12 +18,41 @@ from refactoring_operator import (
     RenameMethodOperator,
     RemoveDuplicateMethodOperator,
     ExtractMethodOperator,
-    ExtractMethodWithReturnOperator
+    ExtractMethodWithReturnOperator,
+    RenameFieldOperator
 )
-from dependency_checker import DependencyChecker
+from src.helpers.dependency_checker import DependencyChecker
+from src.helpers.control_flow_checker import ControlFlowChecker
+from src.helpers.store_load_visitor import StoreLoadVisitor
 from util import get_random_name
-from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
-from util_llm import get_recommendations_for_function_rename
+from util_ast import (
+    ast_equal,
+    ast_similar,
+    find_same_level_ifs,
+    _is_recursive,
+    create_codes_from_stmts,
+    create_return_nodes_from_assign_or_augassign
+)
+from util_llm import (
+    get_recommendation_for_function_rename,
+    get_recommendation_for_field_rename,
+    extract_names_from_recommendation,
+    get_recommendation_for_function_name
+)
+
+TARGET_ATTRS = {
+    ast.FunctionDef: ['body'],
+    ast.If: ['body', 'orelse'],
+    ast.While: ['body'],
+    ast.For: ['body']
+}
+
+CLS_TO_NODE_TYPE = {
+    ast.FunctionDef: NodeType.FunctionDef,
+    ast.If: NodeType.If,
+    ast.While: NodeType.While,
+    ast.For: NodeType.For
+}
 
 
 class OrderVisitor(ast.NodeVisitor):
@@ -236,12 +265,9 @@ class CandidateGenerator:
             node.name = get_random_name()
 
             code = ast.unparse(node)
-            recommendations = get_recommendations_for_function_rename(code).split('\n')[0]
+            recommendation = get_recommendation_for_function_rename(code)
 
-            for _name in recommendations.split(","):
-                name = _name.strip()
-                if not name:
-                    continue
+            for name in extract_names_from_recommendation(recommendation):
                 candidates.append(RenameMethodOperator(no, name))
 
             node.name = orig_name
@@ -249,16 +275,22 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
-    def _generate_rdm_candidates(
-            root: ast.Module, node_order: dict[ast.AST, int]
-    ) -> list[RemoveDuplicateMethodOperator]:
-        candidates = []
-
+    def _get_function_nodes(root: ast.Module) -> list[ast.FunctionDef]:
         function_nodes = []
 
         for node in ast.walk(root):
             if isinstance(node, ast.FunctionDef):
                 function_nodes.append(node)
+
+        return function_nodes
+
+    @staticmethod
+    def _generate_rdm_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RemoveDuplicateMethodOperator]:
+        candidates = []
+
+        function_nodes = CandidateGenerator._get_function_nodes(root)
 
         for i in range(len(function_nodes)):
             for j in range(i+1, len(function_nodes)):
@@ -280,25 +312,46 @@ class CandidateGenerator:
     ) -> list[ExtractMethodOperator]:
         candidates = []
 
-        function_nodes = []
-
-        for node in ast.walk(root):
-            if isinstance(node, ast.FunctionDef):
-                function_nodes.append(node)
+        function_nodes = CandidateGenerator._get_function_nodes(root)
 
         for function_node in function_nodes:
-            body = function_node.body
-
-            for i in range(len(body)):
-                for j in range(len(body)-1, i, -1):
-                    if DependencyChecker.is_dependency_free(
-                            function_node, function_node, 'body', i, j-i+1
-                    ):
-                        no = node_order[function_node]
-                        candidates.append(
-                            ExtractMethodOperator(no, i, j-i+1, 'name')
-                        )
+            for node in ast.walk(function_node):
+                attrs = None
+                node_type = None
+                for cls in TARGET_ATTRS.keys():
+                    if isinstance(node, cls):
+                        attrs = TARGET_ATTRS[cls]
+                        node_type = CLS_TO_NODE_TYPE[cls]
                         break
+
+                if attrs is None:
+                    continue
+
+                for attr_name in attrs:
+                    attr = getattr(node, attr_name)
+
+                    if len(attr) == 0:
+                        continue
+
+                    for i in range(len(attr)):
+                        for j in range(len(attr)-1, i, -1):
+                            stmts = attr[i:j+1]
+                            if ControlFlowChecker.has_return(stmts):
+                                continue
+
+                            if DependencyChecker.is_dependency_free(
+                                function_node, node, attr_name, i, j-i+1
+                            ):
+                                no = node_order[node]
+
+                                code = create_codes_from_stmts(stmts)
+                                recommendation = get_recommendation_for_function_name(code)
+
+                                for name in extract_names_from_recommendation(recommendation):
+                                    candidates.append(
+                                        ExtractMethodOperator(node_type, no, i, j-i+1, name)
+                                    )
+                                break
 
         return candidates
 
@@ -308,29 +361,86 @@ class CandidateGenerator:
     ) -> list[ExtractMethodWithReturnOperator]:
         candidates = []
 
-        function_nodes = []
-
-        for node in ast.walk(root):
-            if isinstance(node, ast.FunctionDef):
-                function_nodes.append(node)
+        function_nodes = CandidateGenerator._get_function_nodes(root)
 
         for function_node in function_nodes:
-            body = function_node.body
+            for node in ast.walk(function_node):
+                attrs = None
+                node_type = None
+                for cls in TARGET_ATTRS.keys():
+                    if isinstance(node, cls):
+                        attrs = TARGET_ATTRS[cls]
+                        node_type = CLS_TO_NODE_TYPE[cls]
+                        break
 
-            for i in range(len(body)):
-                for j in range(len(body)-1, i, -1):
-                    last_node = body[j]
+                if attrs is None:
+                    continue
 
+                for attr_name in attrs:
+                    attr = getattr(node, attr_name)
+
+                    if len(attr) == 0:
+                        continue
+
+                    last_node = attr[-1]
                     if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
                         continue
 
-                    if DependencyChecker.is_dependency_free_with_return(
-                            function_node, function_node, 'body', i, j-i+1
-                    ):
-                        no = node_order[function_node]
-                        candidates.append(
-                            ExtractMethodWithReturnOperator(no, i, j-i+1, 'name')
-                        )
-                        break
+                    for i in range(len(attr)):
+                        for j in range(len(attr)-1, i, -1):
+                            stmts = attr[i:j]  # in EMR the final line could be a return statement
+                            if ControlFlowChecker.has_return(stmts):
+                                continue
+
+                            if DependencyChecker.is_dependency_free_with_return(
+                                function_node, node, attr_name, i, j-i+1
+                            ):
+                                no = node_order[node]
+
+                                stmts.append(create_return_nodes_from_assign_or_augassign(attr[j]))
+                                code = create_codes_from_stmts(stmts)
+                                recommendation = get_recommendation_for_function_name(code)
+
+                                for name in extract_names_from_recommendation(recommendation):
+                                    candidates.append(
+                                        ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, name)
+                                    )
+                                break
+
+        return candidates
+
+    @staticmethod
+    def _generate_rf_candidates(
+            root: ast.Module, node_order: dict[ast.AST, int]
+    ) -> list[RenameFieldOperator]:
+        # arguments + stored vars
+        candidates = []
+
+        function_nodes = CandidateGenerator._get_function_nodes(root)
+
+        for function_node in function_nodes:
+            visitor = StoreLoadVisitor()
+            visitor.visit(function_node)
+
+            assigned_ids = visitor.store_ids - visitor.load_ids
+
+            args = set(arg.arg for arg in function_node.args.args)
+            if function_node.args.vararg:
+                args.add(function_node.args.vararg.arg)
+            if function_node.args.kwarg:
+                args.add(function_node.args.kwarg.arg)
+            args.update(arg.arg for arg in function_node.args.kwonlyargs)
+
+            function_code = ast.unparse(function_node)
+            no = node_order[function_node]
+
+            for name in assigned_ids.union(args):
+                recommendation = get_recommendation_for_field_rename(function_code, name)
+
+                for new_name in extract_names_from_recommendation(recommendation):
+                    if name == new_name:
+                        continue
+
+                    candidates.append(RenameFieldOperator(no, name, new_name))
 
         return candidates

@@ -4,10 +4,6 @@ which are used to represent various refactoring operators that can be used
 in SBSE process.
 """
 
-"""
-impl order: DC -> IM -> CC -> RNC -> RM / RF -> EM
-"""
-
 from abc import ABC
 from type_enums import RefactoringOperatorType, NodeType
 
@@ -20,17 +16,19 @@ class RefactoringOperator(ABC):
             target_node_type,
             target_node_no,
             length=None,
+            old_name=None,
             new_name=None,
             reference_node_no=None,
-            start_pos=None,
+            start_idx=None,
     ):
         self.operator_type = operator_type
         self.target_node_type = target_node_type
         self.target_node_no = target_node_no
         self.length = length
+        self.old_name = old_name
         self.new_name = new_name
         self.reference_node_no = reference_node_no
-        self.start_pos = start_pos
+        self.start_idx = start_idx
 
     def __str__(self):
         var_strs = [f"target={self.target_node_type.value}[{self.target_node_no}]"]
@@ -38,14 +36,17 @@ class RefactoringOperator(ABC):
         if self.length is not None:
             var_strs.append(f"length={self.length}")
 
+        if self.old_name is not None:
+            var_strs.append(f"old_name={self.old_name}")
+
         if self.new_name is not None:
             var_strs.append(f"new_name={self.new_name}")
 
         if self.reference_node_no is not None:
             var_strs.append(f"reference={self.target_node_type.value}[{self.reference_node_no}]")
 
-        if self.start_pos is not None:
-            var_strs.append(f"start_pos={self.start_pos}")
+        if self.start_idx is not None:
+            var_strs.append(f"start_pos={self.start_idx}")
 
         var_str = ", ".join(var_strs)
 
@@ -63,31 +64,45 @@ class RefactoringOperator(ABC):
             self.length == other.length and
             # self.new_name == other.new_name and
             self.reference_node_no == other.reference_node_no and
-            self.start_pos == other.start_pos
+            self.start_idx == other.start_idx
         )
 
 
 class ExtractMethodOperator(RefactoringOperator):
-    def __init__(self, target_node_no, start_pos, length, new_name):
+    def __init__(self, target_node_typ, target_node_no, start_idx, length, new_name):
+        assert target_node_typ in (
+            NodeType.FunctionDef,
+            NodeType.If,
+            NodeType.For,
+            NodeType.While
+        )
+
         super().__init__(
             operator_type=RefactoringOperatorType.EM,
-            target_node_type=NodeType.FunctionDef,
+            target_node_type=target_node_typ,
             target_node_no=target_node_no,
             length=length,
             new_name=new_name,
-            start_pos=start_pos
+            start_idx=start_idx
         )
 
 
 class ExtractMethodWithReturnOperator(RefactoringOperator):
-    def __init__(self, target_node_no, start_pos, length, new_name):
+    def __init__(self, target_node_typ, target_node_no, start_idx, length, new_name):
+        assert target_node_typ in (
+            NodeType.FunctionDef,
+            NodeType.If,
+            NodeType.For,
+            NodeType.While
+        )
+
         super().__init__(
             operator_type=RefactoringOperatorType.EMR,
             target_node_type=NodeType.FunctionDef,
             target_node_no=target_node_no,
             length=length,
             new_name=new_name,
-            start_pos=start_pos
+            start_idx=start_idx
         )
 
 
@@ -112,11 +127,12 @@ class RenameMethodOperator(RefactoringOperator):
 
 
 class RenameFieldOperator(RefactoringOperator):
-    def __init__(self, target_node_no, new_name):
+    def __init__(self, target_node_no, old_name, new_name):
         super().__init__(
             operator_type=RefactoringOperatorType.RF,
-            target_node_type=NodeType.Assign,
+            target_node_type=NodeType.FunctionDef,
             target_node_no=target_node_no,
+            old_name=old_name,
             new_name=new_name
         )
 
