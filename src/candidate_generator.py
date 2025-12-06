@@ -21,9 +21,9 @@ from refactoring_operator import (
     ExtractMethodWithReturnOperator,
     RenameFieldOperator
 )
-from dependency_checker import DependencyChecker
-from control_flow_checker import ControlFlowChecker
-from store_load_visitor import StoreLoadVisitor
+from src.helpers.dependency_checker import DependencyChecker
+from src.helpers.control_flow_checker import ControlFlowChecker
+from src.helpers.store_load_visitor import StoreLoadVisitor
 from util import get_random_name
 from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
 from util_llm import (
