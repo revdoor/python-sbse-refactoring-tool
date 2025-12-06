@@ -132,3 +132,12 @@ def _is_recursive(func_node: ast.FunctionDef) -> bool:
             if isinstance(n.func, ast.Name) and n.func.id == func_name:
                 return True
     return False
+
+
+def create_codes_from_stmts(stmts):
+    return "\n".join(ast.unparse(stmts))
+
+
+def create_return_nodes_from_assign_or_augassign(node):
+    assert isinstance(node, ast.Assign) or isinstance(node, ast.AugAssign)
+    return ast.Return(value=node.value)

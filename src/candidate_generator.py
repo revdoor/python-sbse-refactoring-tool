@@ -25,11 +25,19 @@ from src.helpers.dependency_checker import DependencyChecker
 from src.helpers.control_flow_checker import ControlFlowChecker
 from src.helpers.store_load_visitor import StoreLoadVisitor
 from util import get_random_name
-from util_ast import ast_equal, ast_similar, find_same_level_ifs, _is_recursive
+from util_ast import (
+    ast_equal,
+    ast_similar,
+    find_same_level_ifs,
+    _is_recursive,
+    create_codes_from_stmts,
+    create_return_nodes_from_assign_or_augassign
+)
 from util_llm import (
     get_recommendation_for_function_rename,
     get_recommendations_for_field_rename,
-    extract_names_from_recommendation
+    extract_names_from_recommendation,
+    get_recommendation_for_function_name
 )
 
 TARGET_ATTRS = {
@@ -335,9 +343,14 @@ class CandidateGenerator:
                                 function_node, node, attr_name, i, j-i+1
                             ):
                                 no = node_order[node]
-                                candidates.append(
-                                    ExtractMethodOperator(node_type, no, i, j-i+1, 'name')
-                                )
+
+                                code = create_codes_from_stmts(stmts)
+                                recommendation = get_recommendation_for_function_name(code)
+
+                                for name in extract_names_from_recommendation(recommendation):
+                                    candidates.append(
+                                        ExtractMethodOperator(node_type, no, i, j-i+1, name)
+                                    )
                                 break
 
         return candidates
@@ -383,9 +396,15 @@ class CandidateGenerator:
                                 function_node, node, attr_name, i, j-i+1
                             ):
                                 no = node_order[node]
-                                candidates.append(
-                                    ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, 'name')
-                                )
+
+                                stmts.append(create_return_nodes_from_assign_or_augassign(attr[j]))
+                                code = create_codes_from_stmts(stmts)
+                                recommendation = get_recommendation_for_function_name(code)
+
+                                for name in extract_names_from_recommendation(recommendation):
+                                    candidates.append(
+                                        ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, name)
+                                    )
                                 break
 
         return candidates
