@@ -359,7 +359,6 @@ class CandidateGenerator:
                                     candidates.append(
                                         ExtractMethodOperator(node_type, no, i, j-i+1, name)
                                     )
-                                break
 
         return candidates
 
@@ -392,10 +391,6 @@ class CandidateGenerator:
 
                     node_type = TO_NODE_TYPE[(node_cls, attr_name)]
 
-                    last_node = attr[-1]
-                    if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
-                        continue
-
                     for i in range(len(attr)):
                         for j in range(len(attr)-1, i, -1):
                             stmts = attr[i:j]  # in EMR the final line could be a return statement
@@ -407,7 +402,12 @@ class CandidateGenerator:
                             ):
                                 no = node_order[node]
 
-                                stmts.append(create_return_nodes_from_assign_or_augassign(attr[j]))
+                                if isinstance(attr[j], (ast.Assign, ast.AugAssign)):
+                                    last = create_return_nodes_from_assign_or_augassign(attr[j])
+                                else:  # return
+                                    last = attr[j]
+
+                                stmts.append(last)
                                 code = create_codes_from_stmts(stmts)
                                 recommendation = get_recommendation_for_function_name(code)
 
@@ -415,7 +415,6 @@ class CandidateGenerator:
                                     candidates.append(
                                         ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, name)
                                     )
-                                break
 
         return candidates
 
