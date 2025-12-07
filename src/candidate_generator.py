@@ -313,52 +313,53 @@ class CandidateGenerator:
         return candidates
 
     @staticmethod
+    def _iter_extractable_blocks(root):
+        function_nodes = CandidateGenerator._get_function_nodes(root)
+
+        for function_node in function_nodes:
+            for node in ast.walk(function_node):
+                node_cls = None
+                for cls in TARGET_ATTRS:
+                    if isinstance(node, cls):
+                        node_cls = cls
+                        break
+
+                if node_cls is None:
+                    continue
+
+                for attr_name in TARGET_ATTRS[node_cls]:
+                    attr = getattr(node, attr_name)
+                    if len(attr) == 0:
+                        continue
+
+                    node_type = TO_NODE_TYPE[(node_cls, attr_name)]
+                    yield function_node, node, attr_name, attr, node_type
+
+    @staticmethod
     def _generate_em_candidates(
             root: ast.Module, node_order: dict[ast.AST, int]
     ) -> list[ExtractMethodOperator]:
         candidates = []
 
-        function_nodes = CandidateGenerator._get_function_nodes(root)
-
-        for function_node in function_nodes:
-            for node in ast.walk(function_node):
-                attrs = None
-                node_cls = None
-                for cls in TARGET_ATTRS.keys():
-                    if isinstance(node, cls):
-                        attrs = TARGET_ATTRS[cls]
-                        node_cls = cls
-                        break
-
-                if attrs is None:
-                    continue
-
-                for attr_name in attrs:
-                    attr = getattr(node, attr_name)
-
-                    if len(attr) == 0:
+        for function_node, node, attr_name, attr, node_type in CandidateGenerator._iter_extractable_blocks(root):
+            for i in range(len(attr)):
+                for j in range(len(attr)-1, i, -1):
+                    stmts = attr[i:j+1]
+                    if ControlFlowChecker.has_return(stmts):
                         continue
 
-                    node_type = TO_NODE_TYPE[(node_cls, attr_name)]
+                    if DependencyChecker.is_dependency_free(
+                        function_node, node, attr_name, i, j-i+1
+                    ):
+                        no = node_order[node]
 
-                    for i in range(len(attr)):
-                        for j in range(len(attr)-1, i, -1):
-                            stmts = attr[i:j+1]
-                            if ControlFlowChecker.has_return(stmts):
-                                continue
+                        code = create_codes_from_stmts(stmts)
+                        recommendation = get_recommendation_for_function_name(code)
 
-                            if DependencyChecker.is_dependency_free(
-                                function_node, node, attr_name, i, j-i+1
-                            ):
-                                no = node_order[node]
-
-                                code = create_codes_from_stmts(stmts)
-                                recommendation = get_recommendation_for_function_name(code)
-
-                                for name in extract_names_from_recommendation(recommendation):
-                                    candidates.append(
-                                        ExtractMethodOperator(node_type, no, i, j-i+1, name)
-                                    )
+                        for name in extract_names_from_recommendation(recommendation):
+                            candidates.append(
+                                ExtractMethodOperator(node_type, no, i, j-i+1, name)
+                            )
 
         return candidates
 
@@ -368,53 +369,31 @@ class CandidateGenerator:
     ) -> list[ExtractMethodWithReturnOperator]:
         candidates = []
 
-        function_nodes = CandidateGenerator._get_function_nodes(root)
-
-        for function_node in function_nodes:
-            for node in ast.walk(function_node):
-                attrs = None
-                node_cls = None
-                for cls in TARGET_ATTRS.keys():
-                    if isinstance(node, cls):
-                        attrs = TARGET_ATTRS[cls]
-                        node_cls = cls
-                        break
-
-                if attrs is None:
-                    continue
-
-                for attr_name in attrs:
-                    attr = getattr(node, attr_name)
-
-                    if len(attr) == 0:
+        for function_node, node, attr_name, attr, node_type in CandidateGenerator._iter_extractable_blocks(root):
+            for i in range(len(attr)):
+                for j in range(len(attr)-1, i, -1):
+                    stmts = attr[i:j]  # in EMR the final line could be a return statement
+                    if ControlFlowChecker.has_return(stmts):
                         continue
 
-                    node_type = TO_NODE_TYPE[(node_cls, attr_name)]
+                    if DependencyChecker.is_dependency_free_with_return(
+                        function_node, node, attr_name, i, j-i+1
+                    ):
+                        no = node_order[node]
 
-                    for i in range(len(attr)):
-                        for j in range(len(attr)-1, i, -1):
-                            stmts = attr[i:j]  # in EMR the final line could be a return statement
-                            if ControlFlowChecker.has_return(stmts):
-                                continue
+                        if isinstance(attr[j], (ast.Assign, ast.AugAssign)):
+                            last = create_return_nodes_from_assign_or_augassign(attr[j])
+                        else:  # return
+                            last = attr[j]
 
-                            if DependencyChecker.is_dependency_free_with_return(
-                                function_node, node, attr_name, i, j-i+1
-                            ):
-                                no = node_order[node]
+                        stmts.append(last)
+                        code = create_codes_from_stmts(stmts)
+                        recommendation = get_recommendation_for_function_name(code)
 
-                                if isinstance(attr[j], (ast.Assign, ast.AugAssign)):
-                                    last = create_return_nodes_from_assign_or_augassign(attr[j])
-                                else:  # return
-                                    last = attr[j]
-
-                                stmts.append(last)
-                                code = create_codes_from_stmts(stmts)
-                                recommendation = get_recommendation_for_function_name(code)
-
-                                for name in extract_names_from_recommendation(recommendation):
-                                    candidates.append(
-                                        ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, name)
-                                    )
+                        for name in extract_names_from_recommendation(recommendation):
+                            candidates.append(
+                                ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, name)
+                            )
 
         return candidates
 
