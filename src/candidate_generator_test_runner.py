@@ -46,7 +46,9 @@ class TestData:
     @staticmethod
     def get_test_data_for_dc():
         return [
-            DecomposeConditionalOperator(1)
+            DecomposeConditionalOperator(1, '1'),
+            DecomposeConditionalOperator(1, '2'),
+            DecomposeConditionalOperator(1, '3')
         ]
 
     @staticmethod
