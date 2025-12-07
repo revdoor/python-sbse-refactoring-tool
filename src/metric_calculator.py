@@ -5,6 +5,8 @@ for the given source code.
 """
 
 import ast
+from typing import Optional
+from collections import Counter
 from util_llm import llm_readability_score
 
 
@@ -74,6 +76,26 @@ class MetricCalculator:
         return len(lines)
 
     @staticmethod
+    def _extract_func_name(node: ast.Call) -> Optional[str]:
+        if isinstance(node.func, ast.Name):
+            return node.func.id
+
+        if isinstance(node.func, ast.Attribute):
+            parts = []
+            cur = node.func
+
+            while isinstance(cur, ast.Attribute):
+                parts.append(cur.attr)
+                cur = cur.value
+
+            if isinstance(cur, ast.Name):
+                parts.append(cur.id)
+
+            return ".".join(reversed(parts))
+
+        return None
+
+    @staticmethod
     def fan_in(root):
         """
         Fan-in metric calculation.
@@ -81,33 +103,15 @@ class MetricCalculator:
         The overall score is the total fan-in numbers
         """
 
-        fan_in_dict = {}
+        fan_in_counter = Counter()
 
         for node in ast.walk(root):
-            if not isinstance(node, ast.Call):
-                continue
+            if isinstance(node, ast.Call):
+                func_name = MetricCalculator._extract_func_name(node)
+                if func_name is not None:
+                    fan_in_counter[func_name] += 1
 
-            if isinstance(node.func, ast.Name):
-                func_name = node.func.id
-            elif isinstance(node.func, ast.Attribute):
-                temp_attr_list = []
-                cur = node.func
-
-                while isinstance(cur, ast.Attribute):
-                    temp_attr_list.append(cur.attr)
-                    cur = cur.value
-                if isinstance(cur, ast.Name):
-                    temp_attr_list.append(cur.id)
-                temp_attr_list.reverse()
-                func_name = ".".join(temp_attr_list)
-
-            fan_in_dict[func_name] = fan_in_dict.get(func_name, 0) + 1
-        
-        score = 0
-        for func_name in fan_in_dict:
-            score += fan_in_dict[func_name]
-        
-        return score, fan_in_dict
+        return sum(fan_in_counter.values()), dict(fan_in_counter)
 
     # def num_refactoring(self, source_code, root):
     #     pass
