@@ -96,6 +96,28 @@ def get_recommendation_for_function_name(function_code):
     return response['message']['content']
 
 
+def get_recommendation_for_decompose_conditional(conditional_code):
+    prompt = f"""Suggest names for the given conditional, which would be extracted as a method.
+
+    Code:
+    {conditional_code}
+
+    Suggest 3 names only, with the order of preference, separated by commas.
+    Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
+    Names only, no 'def'.
+    """
+
+    response = ollama.chat(
+        model='llama3',
+        messages=[
+            {'role': 'system', 'content': 'You are a Python naming expert.'},
+            {'role': 'user', 'content': prompt}
+        ]
+    )
+
+    return response['message']['content']
+
+
 def extract_names_from_recommendation(recommendation):
     result_line = recommendation.split('\n')[0]
 

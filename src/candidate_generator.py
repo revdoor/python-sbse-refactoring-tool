@@ -37,7 +37,8 @@ from util_llm import (
     get_recommendation_for_function_rename,
     get_recommendation_for_field_rename,
     extract_names_from_recommendation,
-    get_recommendation_for_function_name
+    get_recommendation_for_function_name,
+    get_recommendation_for_decompose_conditional
 )
 
 TARGET_ATTRS = {
@@ -143,13 +144,13 @@ class CandidateGenerator:
             if not isinstance(node, ast.If):
                 continue
 
-            # consider If nodes with BoolOp of And/Or only
-            # for a valid complex conditional expression
-            # that would be considered as a target for DC operator
-            if isinstance(node.test, ast.BoolOp) and \
-                    (isinstance(node.test.op, ast.And) or isinstance(node.test.op, ast.Or)):
-                no = node_order[node]
-                candidates.append(DecomposeConditionalOperator(no))
+            no = node_order[node]
+
+            code = ast.unparse(node.test)
+            recommendation = get_recommendation_for_decompose_conditional(code)
+
+            for name in extract_names_from_recommendation(recommendation):
+                candidates.append(DecomposeConditionalOperator(no, name))
 
         return candidates
 

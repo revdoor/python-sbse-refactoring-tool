@@ -138,11 +138,12 @@ class RenameFieldOperator(RefactoringOperator):
 
 
 class DecomposeConditionalOperator(RefactoringOperator):
-    def __init__(self, target_node_no):
+    def __init__(self, target_node_no, new_name):
         super().__init__(
             operator_type=RefactoringOperatorType.DC,
             target_node_type=NodeType.If,
-            target_node_no=target_node_no
+            target_node_no=target_node_no,
+            new_name=new_name
         )
 
 
