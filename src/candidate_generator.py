@@ -47,11 +47,12 @@ TARGET_ATTRS = {
     ast.For: ['body']
 }
 
-CLS_TO_NODE_TYPE = {
-    ast.FunctionDef: NodeType.FunctionDef,
-    ast.If: NodeType.If,
-    ast.While: NodeType.While,
-    ast.For: NodeType.For
+TO_NODE_TYPE = {
+    (ast.FunctionDef, 'body'): NodeType.FunctionDef,
+    (ast.If, 'body'): NodeType.If,
+    (ast.If, 'orelse'): NodeType.IfElse,
+    (ast.While, 'body'): NodeType.While,
+    (ast.For, 'body'): NodeType.For
 }
 
 
@@ -321,11 +322,11 @@ class CandidateGenerator:
         for function_node in function_nodes:
             for node in ast.walk(function_node):
                 attrs = None
-                node_type = None
+                node_cls = None
                 for cls in TARGET_ATTRS.keys():
                     if isinstance(node, cls):
                         attrs = TARGET_ATTRS[cls]
-                        node_type = CLS_TO_NODE_TYPE[cls]
+                        node_cls = cls
                         break
 
                 if attrs is None:
@@ -336,6 +337,8 @@ class CandidateGenerator:
 
                     if len(attr) == 0:
                         continue
+
+                    node_type = TO_NODE_TYPE[(node_cls, attr_name)]
 
                     for i in range(len(attr)):
                         for j in range(len(attr)-1, i, -1):
@@ -370,11 +373,11 @@ class CandidateGenerator:
         for function_node in function_nodes:
             for node in ast.walk(function_node):
                 attrs = None
-                node_type = None
+                node_cls = None
                 for cls in TARGET_ATTRS.keys():
                     if isinstance(node, cls):
                         attrs = TARGET_ATTRS[cls]
-                        node_type = CLS_TO_NODE_TYPE[cls]
+                        node_cls = cls
                         break
 
                 if attrs is None:
@@ -385,6 +388,8 @@ class CandidateGenerator:
 
                     if len(attr) == 0:
                         continue
+
+                    node_type = TO_NODE_TYPE[(node_cls, attr_name)]
 
                     last_node = attr[-1]
                     if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
