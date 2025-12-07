@@ -98,7 +98,7 @@ class ExtractMethodWithReturnOperator(RefactoringOperator):
 
         super().__init__(
             operator_type=RefactoringOperatorType.EMR,
-            target_node_type=NodeType.FunctionDef,
+            target_node_type=target_node_typ,
             target_node_no=target_node_no,
             length=length,
             new_name=new_name,
