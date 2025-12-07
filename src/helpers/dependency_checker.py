@@ -63,10 +63,7 @@ class DependencyChecker:
         last_node = target_nodes[-1]
         body_nodes = target_nodes[:-1]
 
-        if not isinstance(last_node, ast.Assign) and not isinstance(last_node, ast.AugAssign):
-            return False
-
-        if not isinstance(last_node, ast.Return):
+        if not isinstance(last_node, (ast.Assign, ast.AugAssign, ast.Return)):
             return False
 
         target_visitor = StoreLoadVisitor()
