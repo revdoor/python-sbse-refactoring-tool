@@ -116,6 +116,10 @@ class CandidateGenerator:
                 return CandidateGenerator._generate_rdm_candidates(root, node_order)
             case RefactoringOperatorType.EM:
                 return CandidateGenerator._generate_em_candidates(root, node_order)
+            case RefactoringOperatorType.EMR:
+                return CandidateGenerator._generate_emr_candidates(root, node_order)
+            case RefactoringOperatorType.RF:
+                return CandidateGenerator._generate_rf_candidates(root, node_order)
             case _:
                 return []
 
