@@ -3,7 +3,7 @@ import ollama
 
 
 class LLMConfig:
-    model: str = "llama3"
+    model: str = "llama3.2"
     naming_system_prompt: str = "You are a Python naming expert."
     readability_system_prompt: str = "You are a strict Python code readability evaluator."
 
@@ -130,7 +130,7 @@ def llm_readability_score(source_code):
     {source_code}"""
 
     response = ollama.chat(
-        model='llama3',
+        model=LLMConfig.model,
         messages=[
             {'role': 'system', 'content': 'You are a strict Python code readability evaluator.'},
             {'role': 'user', 'content': prompt}
