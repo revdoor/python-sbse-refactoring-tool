@@ -69,6 +69,8 @@ class Applier:
             print(f"Error in applying {op_type}: {e}")
             root = root_backup
 
+        ast.fix_missing_locations(root)
+
         return ast.unparse(root)
 
     def _dispatch_operator(
@@ -404,7 +406,7 @@ class Applier:
     def _apply_emr(self, root, node, operator: ExtractMethodWithReturnOperator):
         attr_name = get_attr_name_from_node_type(operator.target_node_type)
         idx, length = operator.start_idx, operator.length
-        assert idx and length
+        assert idx is not None and length is not None
         new_name = operator.new_name if operator.new_name != 'name' else "extracted"
         assert new_name
 

@@ -77,24 +77,24 @@ class NamingRecommender:
         return names
 
     @staticmethod
-    def for_function_rename(function_code: str) -> str:
+    def for_function_rename(function_code: str) -> list[str]:
         prompt = PromptTemplates.function_rename(function_code)
-        return NamingRecommender._get_recommendation(prompt)
+        return NamingRecommender._get_recommended_names(prompt)
 
     @staticmethod
-    def for_field_rename(function_code: str, field_name: str) -> str:
+    def for_field_rename(function_code: str, field_name: str) -> list[str]:
         prompt = PromptTemplates.field_rename(function_code, field_name)
-        return NamingRecommender._get_recommendation(prompt)
+        return NamingRecommender._get_recommended_names(prompt)
 
     @staticmethod
-    def for_function_name(function_code: str) -> str:
+    def for_function_name(function_code: str) -> list[str]:
         prompt = PromptTemplates.function_name(function_code)
-        return NamingRecommender._get_recommendation(prompt)
+        return NamingRecommender._get_recommended_names(prompt)
 
     @staticmethod
-    def for_decompose_conditional(conditional_code: str) -> str:
+    def for_decompose_conditional(conditional_code: str) -> list[str]:
         prompt = PromptTemplates.decompose_conditional(conditional_code)
-        return NamingRecommender._get_recommendation(prompt)
+        return NamingRecommender._get_recommended_names(prompt)
 
 
 def extract_names_from_recommendation(recommendation):
