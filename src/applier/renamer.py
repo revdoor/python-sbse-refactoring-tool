@@ -16,12 +16,13 @@ class CallRenamer(ast.NodeTransformer):
         self.is_method = is_method
         self.super_only = super_only
 
-    def visit_Call(self, node: ast.Call) -> None:
+    def visit_Call(self, node: ast.Call):
         if self.is_method:
             self._handle_method_call(node)
         else:
             self._handle_function_call(node)
         self.generic_visit(node)
+        return node
 
     def _handle_method_call(self, node: ast.Call) -> None:
         """Handle self.method() and super().method() calls."""
