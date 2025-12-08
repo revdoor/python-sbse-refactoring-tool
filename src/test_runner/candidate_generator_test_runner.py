@@ -1,8 +1,9 @@
 from collections.abc import Sequence
 from pathlib import Path
-from candidate_generator import CandidateGenerator
-from type_enums import RefactoringOperatorType
-from refactoring_operator import (
+
+from ..candidate_generator import CandidateGenerator
+from ..type_enums import RefactoringOperatorType
+from ..refactoring_operator import (
     RefactoringOperator,
     InlineMethodOperator,
     DecomposeConditionalOperator,
