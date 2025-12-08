@@ -36,7 +36,7 @@ from refactoring_operator import (
     ExtractMethodWithReturnOperator,
 )
 from util_ast import ast_equal, _is_recursive
-from helpers.store_load_visitor import StoreLoadVisitor
+from store_load_visitor import StoreLoadVisitor
 
 
 # ============================================================
@@ -132,7 +132,16 @@ def insert_function_to_scope(
     target_node: ast.AST,
     uses_self: bool
 ) -> None:
-    """Insert a new function/method into the appropriate scope."""
+    """
+    Insert a new function/method into the appropriate scope.
+    
+    Args:
+        root: The module AST
+        new_func: The new function to insert
+        target_node: The original function (insert position reference)
+        enclosing_class: The class containing target_node, or None for module level
+        uses_self: Whether the new function uses 'self'
+    """
     if enclosing_class and uses_self:
         # Insert as a method in the class
         direct_method = find_direct_enclosing_method(enclosing_class, target_node)
@@ -1044,7 +1053,7 @@ class Applier:
         if not hasattr(node, attr_name):
             raise ValueError(f"Node does not have attribute '{attr_name}'")
         
-        body = getattr(node, attr_name)
+        body = node.body
         
         if idx + length > len(body):
             raise ValueError("Invalid index or length for extraction")
@@ -1057,6 +1066,7 @@ class Applier:
             raise ValueError(f"Function/method '{new_name}' already exists")
         
         target_stmts = body[idx:idx + length]
+        prev_stmts = body[:idx]
         last_stmt = target_stmts[-1]
         
         # Determine return handling
@@ -1088,7 +1098,7 @@ class Applier:
         new_func = RefactoringHelper.create_function(
             name=new_name,
             params=params,
-            body=new_func_body,
+            body=new_body,
             include_self=include_self
         )
         
