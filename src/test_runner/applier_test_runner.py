@@ -1,12 +1,12 @@
+from pathlib import Path
+
 from applier import Applier
 from candidate_generator import CandidateGenerator
 from type_enums import RefactoringOperatorType
-from pathlib import Path
-from refactoring_operator import RenameFieldOperator
 
 
 if __name__ == "__main__":
-    script_dir = Path(__file__).parent.resolve()
+    script_dir = Path(__file__).parent.parent.resolve()
     target_dir = script_dir / 'dump_target_code'
 
     applier = Applier()
@@ -19,8 +19,8 @@ if __name__ == "__main__":
         # RefactoringOperatorType.IM,
         # RefactoringOperatorType.RDM,
         # RefactoringOperatorType.EM,
-        # RefactoringOperatorType.EMR,
-        # RefactoringOperatorType.RF,
+        RefactoringOperatorType.EMR,
+        RefactoringOperatorType.RF,
         RefactoringOperatorType.DC,
     ]
 
@@ -28,6 +28,7 @@ if __name__ == "__main__":
         file_path = target_dir / f'dump_target_code_{operator.name.lower()}.py'
         
         if not file_path.exists():
+            print(f"!!!Dump code for {operator.value} does not exist. Skipping!!!")
             continue
 
         print(f"\n\n[{operator.name}] Processing file: {file_path.name}")
@@ -44,7 +45,13 @@ if __name__ == "__main__":
         print(f">> Found {len(candidates)} candidates.")
 
         for i, candidate in enumerate(candidates):
-            if candidate.operator_type in (RefactoringOperatorType.RM, RefactoringOperatorType.EM, RefactoringOperatorType.EMR, RefactoringOperatorType.RF, RefactoringOperatorType.DC):
+            if candidate.operator_type in (
+                    RefactoringOperatorType.RM,
+                    RefactoringOperatorType.EM,
+                    RefactoringOperatorType.EMR,
+                    RefactoringOperatorType.RF,
+                    RefactoringOperatorType.DC
+            ):
                 if i % 3 != 0:
                     continue
 
