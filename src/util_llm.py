@@ -106,6 +106,10 @@ def extract_names_from_recommendation(recommendation):
         name = _name.strip()
         if not name:
             continue
+        if name[0] in '0123456789':
+            continue
+        if ' ' in name:
+            continue
         names.append(name)
 
     return names
