@@ -2,72 +2,99 @@ import re
 import ollama
 
 
-def get_recommendation_for_field_rename(function_code, field_name):
-    prompt = f"""Suggest better names for the given field.
-
-    Code:
-    {function_code}
-    Target field:
-    {field_name}
-
-    Suggest 3 better names only, with the order of preference, separated by commas.
-    Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
-    Names only, no 'def'.
-    """
-
-    response = ollama.chat(
-        model='llama3',
-        messages=[
-            {'role': 'system', 'content': 'You are a Python naming expert.'},
-            {'role': 'user', 'content': prompt}
-        ]
-    )
-
-    return response['message']['content']
+class LLMConfig:
+    model: str = "llama3"
+    naming_system_prompt: str = "You are a Python naming expert."
+    readability_system_prompt: str = "You are a strict Python code readability evaluator."
 
 
-def get_recommendation_for_function_name(function_code):
-    prompt = f"""Suggest names for the given function.
-
-    Code:
-    {function_code}
-
-    Suggest 3 names only, with the order of preference, separated by commas.
-    Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
-    Names only, no 'def'.
-    """
-
-    response = ollama.chat(
-        model='llama3',
-        messages=[
-            {'role': 'system', 'content': 'You are a Python naming expert.'},
-            {'role': 'user', 'content': prompt}
-        ]
-    )
-
-    return response['message']['content']
+class LLMClient:
+    @staticmethod
+    def chat(prompt: str, system_prompt: str) -> str:
+        try:
+            response = ollama.chat(
+                model=LLMConfig.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ]
+            )
+            return response["message"]["content"]
+        except Exception as e:
+            raise RuntimeError(f"LLM 호출 실패: {e}") from e
 
 
-def get_recommendation_for_decompose_conditional(conditional_code):
-    prompt = f"""Suggest names for the given conditional, which would be extracted as a method.
+class PromptTemplates:
+    COMMON_SUFFIX = """
+Suggest 3 better names only, with the order of preference, separated by commas.
+Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
+Names only, no 'def'."""
 
-    Code:
-    {conditional_code}
+    @staticmethod
+    def function_rename(function_code: str) -> str:
+        return f"""Suggest better names for the given function.
 
-    Suggest 3 names only, with the order of preference, separated by commas.
-    Do not include any additional text or formatting. Just response as "name1, name2, name3" format.
-    Names only, no 'def'.
-    """
+Code:
+{function_code}
+{PromptTemplates.COMMON_SUFFIX}"""
 
-    response = ollama.chat(
-        model='llama3',
-        messages=[
-            {'role': 'system', 'content': 'You are a Python naming expert.'},
-            {'role': 'user', 'content': prompt}
-        ]
-    )
+    @staticmethod
+    def field_rename(function_code: str, field_name: str) -> str:
+        return f"""Suggest better names for the given field.
 
-    return response['message']['content']
+Code:
+{function_code}
+Target field:
+{field_name}
+{PromptTemplates.COMMON_SUFFIX}"""
+
+    @staticmethod
+    def function_name(function_code: str) -> str:
+        return f"""Suggest names for the given function.
+
+Code:
+{function_code}
+{PromptTemplates.COMMON_SUFFIX}"""
+
+    @staticmethod
+    def decompose_conditional(conditional_code: str) -> str:
+        return f"""Suggest names for the given conditional, which would be extracted as a method.
+
+Code:
+{conditional_code}
+{PromptTemplates.COMMON_SUFFIX}"""
+
+
+class NamingRecommender:
+    @staticmethod
+    def _get_recommendation(prompt: str) -> str:
+        return LLMClient.chat(prompt, LLMConfig.naming_system_prompt)
+
+    @staticmethod
+    def _get_recommended_names(prompt: str) -> list[str]:
+        recommendation = NamingRecommender._get_recommendation(prompt)
+        names = extract_names_from_recommendation(recommendation)
+        return names
+
+    @staticmethod
+    def for_function_rename(function_code: str) -> str:
+        prompt = PromptTemplates.function_rename(function_code)
+        return NamingRecommender._get_recommendation(prompt)
+
+    @staticmethod
+    def for_field_rename(function_code: str, field_name: str) -> str:
+        prompt = PromptTemplates.field_rename(function_code, field_name)
+        return NamingRecommender._get_recommendation(prompt)
+
+    @staticmethod
+    def for_function_name(function_code: str) -> str:
+        prompt = PromptTemplates.function_name(function_code)
+        return NamingRecommender._get_recommendation(prompt)
+
+    @staticmethod
+    def for_decompose_conditional(conditional_code: str) -> str:
+        prompt = PromptTemplates.decompose_conditional(conditional_code)
+        return NamingRecommender._get_recommendation(prompt)
 
 
 def extract_names_from_recommendation(recommendation):

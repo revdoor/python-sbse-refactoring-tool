@@ -24,7 +24,6 @@ from refactoring_operator import (
 from helpers.dependency_checker import DependencyChecker
 from helpers.control_flow_checker import ControlFlowChecker
 from helpers.store_load_visitor import StoreLoadVisitor
-from util import get_random_name
 from util_ast import (
     ast_equal,
     ast_similar,
@@ -33,13 +32,7 @@ from util_ast import (
     create_codes_from_stmts,
     create_return_nodes_from_assign_or_augassign
 )
-from util_llm import (
-    get_recommendation_for_function_rename,
-    get_recommendation_for_field_rename,
-    extract_names_from_recommendation,
-    get_recommendation_for_function_name,
-    get_recommendation_for_decompose_conditional
-)
+from util_llm import NamingRecommender
 
 TARGET_ATTRS = {
     ast.FunctionDef: ['body'],
@@ -159,9 +152,7 @@ class CandidateGenerator:
             no = node_order[node]
 
             code = ast.unparse(node.test)
-            recommendation = get_recommendation_for_decompose_conditional(code)
-
-            for name in extract_names_from_recommendation(recommendation):
+            for name in NamingRecommender.for_decompose_conditional(code):
                 candidates.append(DecomposeConditionalOperator(no, name))
 
         return candidates
@@ -280,9 +271,7 @@ class CandidateGenerator:
             no = node_order[node]
 
             code = ast.unparse(node)
-            recommendation = get_recommendation_for_function_rename(code)
-
-            for name in extract_names_from_recommendation(recommendation):
+            for name in NamingRecommender.for_function_rename(code):
                 candidates.append(RenameMethodOperator(no, name))
 
         return candidates
@@ -357,9 +346,7 @@ class CandidateGenerator:
                         no = node_order[node]
 
                         code = create_codes_from_stmts(stmts)
-                        recommendation = get_recommendation_for_function_name(code)
-
-                        for name in extract_names_from_recommendation(recommendation):
+                        for name in NamingRecommender.for_function_name(code):
                             candidates.append(
                                 ExtractMethodOperator(node_type, no, i, j-i+1, name)
                             )
@@ -388,12 +375,10 @@ class CandidateGenerator:
                             last = create_return_nodes_from_assign_or_augassign(attr[j])
                         else:  # return
                             last = attr[j]
-
                         stmts.append(last)
-                        code = create_codes_from_stmts(stmts)
-                        recommendation = get_recommendation_for_function_name(code)
 
-                        for name in extract_names_from_recommendation(recommendation):
+                        code = create_codes_from_stmts(stmts)
+                        for name in NamingRecommender.for_function_name(code):
                             candidates.append(
                                 ExtractMethodWithReturnOperator(node_type, no, i, j-i+1, name)
                             )
@@ -426,9 +411,7 @@ class CandidateGenerator:
             no = node_order[function_node]
 
             for name in assigned_ids.union(args):
-                recommendation = get_recommendation_for_field_rename(function_code, name)
-
-                for new_name in extract_names_from_recommendation(recommendation):
+                for new_name in NamingRecommender.for_field_rename(function_code, name):
                     if name == new_name:
                         continue
 
