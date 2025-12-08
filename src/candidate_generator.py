@@ -279,16 +279,11 @@ class CandidateGenerator:
 
             no = node_order[node]
 
-            orig_name = node.name
-            node.name = get_random_name()
-
             code = ast.unparse(node)
             recommendation = get_recommendation_for_function_rename(code)
 
             for name in extract_names_from_recommendation(recommendation):
                 candidates.append(RenameMethodOperator(no, name))
-
-            node.name = orig_name
 
         return candidates
 
