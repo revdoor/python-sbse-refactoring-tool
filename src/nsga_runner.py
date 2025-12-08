@@ -5,6 +5,7 @@ to find the optimal set of refactorings
 for the given source code.
 """
 from __future__ import annotations
+from collections.abc import Sequence
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import random
@@ -12,6 +13,7 @@ import random
 from candidate_generator import CandidateGenerator
 from refactoring_operator import RefactoringOperator
 from metric_calculator import MetricCalculator
+
 
 @dataclass
 class RefactoringPlan:
@@ -33,6 +35,7 @@ class Individual:
     rank: Optional[int] = None
     crowding_distance: float = 0.0
 
+
 class NSGARunner:
     """
     Coordinates NSGA-II:
@@ -41,43 +44,44 @@ class NSGARunner:
       - calls MetricCalculator (+ ReadabilityScorer) to compute objectives
       - evolves a population and returns an approximate Pareto front
     """
+
     def __init__(
-        self,
-        candidate_generator: Callable[[], RefactoringPlan],
-        applier: Callable[[RefactoringPlan], Any],
-        metric_calculator: Callable[[Any], Dict[str, float]],
-        readability_scorer: Optional[Callable[[Any], float]] = None,
-        pop_size: int = 40,
-        n_generations: int = 30,
-        cx_prob: float = 0.7,
-        mut_prob: float = 0.3,
-        random_seed: int = 0,
-        candidate_pool: Optional[List[RefactoringOperator]] = None,
-        ):
-            self.candidate_generator = candidate_generator
-            self.applier = applier
-            self.metric_calculator = metric_calculator
+            self,
+            candidate_generator: Callable[[], RefactoringPlan],
+            applier: Callable[[RefactoringPlan], Any],
+            metric_calculator: Callable[[Any], Dict[str, float]],
+            readability_scorer: Optional[Callable[[Any], float]] = None,
+            pop_size: int = 40,
+            n_generations: int = 30,
+            cx_prob: float = 0.7,
+            mut_prob: float = 0.3,
+            random_seed: int = 0,
+            candidate_pool: Optional[Sequence[RefactoringOperator]] = None,
+    ):
+        self.candidate_generator = candidate_generator
+        self.applier = applier
+        self.metric_calculator = metric_calculator
 
-            self.pop_size = pop_size
-            self.n_generations = n_generations
-            self.cx_prob = cx_prob
-            self.mut_prob = mut_prob
-            self.random = random.Random(random_seed)
+        self.pop_size = pop_size
+        self.n_generations = n_generations
+        self.cx_prob = cx_prob
+        self.mut_prob = mut_prob
+        self.random = random.Random(random_seed)
 
-            self.candidate_pool: List[RefactoringOperator] = candidate_pool or []
+        self.candidate_pool: List[RefactoringOperator] = candidate_pool or []
 
     @classmethod
     def from_source_code(
-        cls,
-        source_code: str,
-        applier: Callable[[RefactoringPlan], Any],
-        metric_calculator: Callable[[Any], Dict[str, float]],
-        readability_scorer: Optional[Callable[[Any], float]] = None,
-        pop_size: int = 40,
-        n_generations: int = 30,
-        cx_prob: float = 0.7,
-        mut_prob: float = 0.3,
-        random_seed: int = 0,
+            cls,
+            source_code: str,
+            applier: Callable[[RefactoringPlan], Any],
+            metric_calculator: Callable[[Any], Dict[str, float]],
+            readability_scorer: Optional[Callable[[Any], float]] = None,
+            pop_size: int = 40,
+            n_generations: int = 30,
+            cx_prob: float = 0.7,
+            mut_prob: float = 0.3,
+            random_seed: int = 0,
     ) -> "NSGARunner":
         """
         Helper to build an NSGARunner directly from raw source code.
@@ -85,8 +89,9 @@ class NSGARunner:
           - ask CandidateGenerator for all possible RefactoringOperator candidates
           - build a candidate_generator() that samples random subsets of them
         """
-        all_candidates: List[RefactoringOperator] = CandidateGenerator.generate_candidates(source_code)
+        all_candidates: Sequence[RefactoringOperator] = CandidateGenerator.generate_candidates(source_code)
         rnd = random.Random(random_seed)
+
         def make_random_plan() -> RefactoringPlan:
             """
             Sample a random subset of the global candidate list.
@@ -124,7 +129,7 @@ class NSGARunner:
         self._evaluate_population(population)
 
         for gen in range(self.n_generations):
-            print(f"[NSGA-II] Generation {gen+1}/{self.n_generations}")
+            print(f"[NSGA-II] Generation {gen + 1}/{self.n_generations}")
 
             offspring = self._make_offspring(population)
             self._evaluate_population(offspring)
@@ -133,16 +138,17 @@ class NSGARunner:
 
         pareto_front = self._extract_pareto_front(population)
         return pareto_front
-       
+
     def _init_population(self) -> List[Individual]:
-            """
+        """
             Ask the candidate generator to create initial plans.
             """
-            pop: List[Individual] = []
-            for _ in range(self.pop_size):
-                plan = self.candidate_generator()
-                pop.append(Individual(plan=plan))
-            return pop
+        pop: List[Individual] = []
+        for _ in range(self.pop_size):
+            plan = self.candidate_generator()
+            pop.append(Individual(plan=plan))
+        return pop
+
     def _evaluate_population(self, population: List[Individual]) -> None:
         """
         For each individual:
@@ -178,7 +184,7 @@ class NSGARunner:
         """
         alpha = 0.1
         return float(cc) + alpha * float(sloc)
-    
+
     def _cost_objective(self, fan_in: float, plan: RefactoringPlan) -> float:
         """
         Cost / regularization objective: penalize many refactorings and high fan-in.
@@ -220,15 +226,16 @@ class NSGARunner:
                 offspring.append(Individual(plan=child2_plan))
 
         return offspring
-    
+
     def _clone_plan(self, plan: RefactoringPlan) -> RefactoringPlan:
         return RefactoringPlan(genes=list(plan.genes))
-    
+
     def _tournament_select(self, population: List[Individual], k: int = 2) -> Individual:
         """
         Binary tournament based on Pareto rank then crowding distance.
         """
         candidates = self.random.sample(population, k)
+
         # Population is assumed to already have rank and crowding_distance set.
         # For now, if rank is None, we fall back to first objective.
         def key(ind: Individual):
@@ -239,9 +246,9 @@ class NSGARunner:
         return min(candidates, key=key)
 
     def _crossover(
-        self,
-        plan1: RefactoringPlan,
-        plan2: RefactoringPlan,
+            self,
+            plan1: RefactoringPlan,
+            plan2: RefactoringPlan,
     ) -> Tuple[RefactoringPlan, RefactoringPlan]:
         """
         Simple one-point crossover on gene lists.
@@ -280,7 +287,7 @@ class NSGARunner:
                 # avoid trivial duplicates if you want
                 genes.append(new_gene)
         return RefactoringPlan(genes=genes)
-    
+
     def _environmental_selection(self, population: List[Individual]) -> List[Individual]:
         """
         NSGA-II environmental selection:
@@ -311,16 +318,16 @@ class NSGARunner:
         Basic non-dominated sorting.
         """
         fronts: List[List[Individual]] = []
-        S: Dict[Individual, List[Individual]] = {}
+        s: Dict[Individual, List[Individual]] = {}
         n: Dict[Individual, int] = {}
         first_front: List[Individual] = []
 
         for p in population:
-            S[p] = []
+            s[p] = []
             n[p] = 0
             for q in population:
                 if self._dominates(p, q):
-                    S[p].append(q)
+                    s[p].append(q)
                 elif self._dominates(q, p):
                     n[p] += 1
             if n[p] == 0:
@@ -331,7 +338,7 @@ class NSGARunner:
         while fronts[i]:
             next_front: List[Individual] = []
             for p in fronts[i]:
-                for q in S[p]:
+                for q in s[p]:
                     n[q] -= 1
                     if n[q] == 0:
                         next_front.append(q)
@@ -381,4 +388,3 @@ class NSGARunner:
         """
         fronts = self._non_dominated_sort(population)
         return fronts[0] if fronts else []
-    
