@@ -46,7 +46,7 @@ class RefactoringOperator(ABC):
             var_strs.append(f"reference={self.target_node_type.value}[{self.reference_node_no}]")
 
         if self.start_idx is not None:
-            var_strs.append(f"start_pos={self.start_idx}")
+            var_strs.append(f"start_idx={self.start_idx}")
 
         var_str = ", ".join(var_strs)
 
