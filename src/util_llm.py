@@ -3,7 +3,7 @@ import ollama
 
 
 class LLMConfig:
-    model: str = "llama3.2"
+    model: str = "llama3.2:3b"
     naming_system_prompt: str = "You are a Python naming expert."
     readability_system_prompt: str = "You are a strict Python code readability evaluator."
 

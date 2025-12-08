@@ -67,6 +67,18 @@ class RefactoringOperator(ABC):
             self.start_idx == other.start_idx
         )
 
+    def __hash__(self):
+        return hash((
+            self.operator_type,
+            self.target_node_type,
+            self.target_node_no,
+            self.length,
+            self.old_name,
+            self.new_name,
+            self.reference_node_no,
+            self.start_idx,
+        ))
+
 
 class ExtractMethodOperator(RefactoringOperator):
     def __init__(self, target_node_typ, target_node_no, start_idx, length, new_name):
