@@ -42,19 +42,25 @@ class MetricCalculator:
         # It should calculate various metrics for the given source code and return them
         # Metrics: cyclomatic complexity, lines of code, fan-in, LLM readability score
 
-        root = ast.parse(source_code)
-        code = ast.unparse(root)
-        
-        score_cyclomatic = MetricCalculator.cyclomatic_complexity(root)
-        score_fan_in, _dict_fan_in = MetricCalculator.fan_in(root)
+        try:
+            root = ast.parse(source_code)
+            code = ast.unparse(root)
 
-        score_sloc = MetricCalculator.sloc(code)
-        score_llm = llm_readability_score(code)
+            score_cyclomatic = MetricCalculator.cyclomatic_complexity(root)
+            score_fan_in, _dict_fan_in = MetricCalculator.fan_in(root)
+
+            score_sloc = MetricCalculator.sloc(code)
+            score_llm = llm_readability_score(code)
 
         # print("cyclomatic", score_cyclomatic)
         # print("SLOC", score_SLOC)
         # print("fan-in", score_fan_in)
         # print("LLM readability", score_LLM)
+
+        except Exception as e:
+            print("Error in metric calculation:", e)
+            print(source_code)
+            return 1000000, 1000000, 0, 0
 
         return score_cyclomatic, score_sloc, score_fan_in, score_llm
 
