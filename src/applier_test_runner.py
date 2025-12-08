@@ -11,15 +11,14 @@ if __name__ == "__main__":
     applier = Applier()
 
     test_operators = [
-        # RefactoringOperatorType.RC,
-        # RefactoringOperatorType.CC,
-        # RefactoringOperatorType.RNC,
-        # RefactoringOperatorType.RM,
-        # RefactoringOperatorType.IM,
-        # RefactoringOperatorType.RDM,
-        # RefactoringOperatorType.EM,
-        # RefactoringOperatorType.EMR,
-        RefactoringOperatorType.RF
+        RefactoringOperatorType.RC,
+        RefactoringOperatorType.CC,
+        RefactoringOperatorType.RNC,
+        RefactoringOperatorType.RM,
+        RefactoringOperatorType.IM,
+        RefactoringOperatorType.RDM,
+        RefactoringOperatorType.EM,
+        RefactoringOperatorType.EMR,
     ]
 
     for operator in test_operators:
@@ -42,9 +41,8 @@ if __name__ == "__main__":
         print(f">> Found {len(candidates)} candidates.")
 
         for i, candidate in enumerate(candidates):
-            if candidate.operator_type in (RefactoringOperatorType.RM, RefactoringOperatorType.EM, RefactoringOperatorType.EMR, RefactoringOperatorType.RF):
-                if i % 3 != 0:
-                    continue
+            if candidate.operator_type == RefactoringOperatorType.RM and i % 3 != 0:
+                continue
 
             print(f"\n>> Applying Candidate {i+1}/{len(candidates)}: {candidate}")
             
