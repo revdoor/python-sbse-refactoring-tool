@@ -20,21 +20,44 @@ from refactoring_operator import (
     ExtractMethodWithReturnOperator,
 )
 from util_ast import ast_equal, _is_recursive
-from store_load_visitor import StoreLoadVisitor
+from helpers.store_load_visitor import StoreLoadVisitor
 
 
 # ============================================================
 # Utility Functions
 # ============================================================
 
-def find_enclosing_class(root: ast.Module, target_node: ast.FunctionDef) -> ast.ClassDef | None:
-    """Find the class that contains the target method, if any."""
-    for n in ast.walk(root):
-        if isinstance(n, ast.ClassDef):
-            if target_node in n.body:
-                return n
+def get_attr_name_from_node_type(node_type) -> str:
+    """Get attribute name from node type."""
+    if node_type.value == "IfElse":
+        return 'orelse'
+    else:
+        return 'body'
+
+def find_enclosing_class(root: ast.Module, target_node: ast.AST) -> ast.ClassDef | None:
+    """Find the class that contains the target node."""
+    # for every ClassDef
+    for node in ast.walk(root):
+        if isinstance(node, ast.ClassDef):
+            # check target node is in Classdef
+            for descendant in ast.walk(node):
+                if descendant is target_node:
+                    return node
     return None
 
+def find_enclosing_function(root: ast.Module, target_node: ast.AST) -> ast.FunctionDef | None:
+    """Find the function that contains the target node."""
+    # target node is FunctionDef
+    if isinstance(target_node, ast.FunctionDef):
+        return target_node
+    
+    # find Functiondef including target node
+    for n in ast.walk(root):
+        if isinstance(n, ast.FunctionDef):
+            for item in ast.walk(n):
+                if item is target_node:
+                    return n
+    return None
 
 def check_name_conflict(
     root: ast.Module, 
@@ -55,7 +78,7 @@ def check_name_conflict(
         True if there is a name conflict, False otherwise
     """
     if enclosing_class:
-        # 클래스 내에서 중복 체크
+        # check in enclosing class
         for node in enclosing_class.body:
             if node is exclude_node:
                 continue
@@ -63,7 +86,7 @@ def check_name_conflict(
                 if node.name == new_name:
                     return True
     else:
-        # 모듈 레벨에서 중복 체크
+        # check in module
         for node in root.body:
             if node is exclude_node:
                 continue
@@ -91,72 +114,75 @@ def remove_function_from_scope(
     else:
         root.body.remove(node)
 
+def find_direct_enclosing_method(enclosing_class: ast.ClassDef, target_node: ast.AST) -> ast.FunctionDef | None:
+    """Find the method in enclosing_class that directly or indirectly contains target_node."""
+    for item in enclosing_class.body:
+        if isinstance(item, ast.FunctionDef):
+            for n in ast.walk(item):
+                if n is target_node:
+                    return item
+    return None
 
 def insert_function_to_scope(
     root: ast.Module,
     new_func: ast.FunctionDef,
-    target_node: ast.FunctionDef,
+    enclosing_function: ast.FunctionDef | None,
     enclosing_class: ast.ClassDef | None,
+    target_node: ast.AST,
     uses_self: bool
 ) -> None:
-    """
-    Insert a new function/method into the appropriate scope.
-    
-    Args:
-        root: The module AST
-        new_func: The new function to insert
-        target_node: The original function (insert position reference)
-        enclosing_class: The class containing target_node, or None for module level
-        uses_self: Whether the new function uses 'self'
-    """
+    """Insert a new function/method into the appropriate scope."""
     if enclosing_class and uses_self:
-        # 클래스 내에 추가 (원본 메서드 바로 앞)
-        method_idx = enclosing_class.body.index(target_node)
-        enclosing_class.body.insert(method_idx, new_func)
+        # insert in class
+        # find direct enclosing method including target_node
+        direct_method = find_direct_enclosing_method(enclosing_class, target_node)
+        if direct_method is not None:
+            method_idx = enclosing_class.body.index(direct_method)
+            enclosing_class.body.insert(method_idx, new_func)
+        else:
+            enclosing_class.body.insert(0, new_func)
     else:
-        # 모듈 레벨에 추가
-        if enclosing_class:
-            # 클래스 바로 앞에 추가
+        # insert in module
+        if enclosing_class is not None and enclosing_class in root.body:
             class_idx = root.body.index(enclosing_class)
             root.body.insert(class_idx, new_func)
-        else:
-            # 원본 함수 바로 앞에 추가
-            func_idx = root.body.index(target_node)
+        elif enclosing_function is not None and enclosing_function in root.body:
+            func_idx = root.body.index(enclosing_function)
             root.body.insert(func_idx, new_func)
+        else:
+            root.body.insert(0, new_func)
 
 
 # ============================================================
 # AST Visitors and Transformers
 # ============================================================
 
-class TargetNodeFinder(ast.NodeVisitor):
-    """Find target node with type and number."""
+NODE_TYPE_TO_AST_NAME = {
+    "FunctionDef": "FunctionDef",
+    "If": "If",
+    "IfElse": "If",
+    "While": "While",
+    "For": "For",
+}
 
-    def __init__(self, target_node_type, target_node_no):
-        super().__init__()
-        self.target_node_type = target_node_type
-        self.target_node_no = target_node_no
-        self.type_order = {}
-        self.found_node = None
-        self.parent_node = None
+
+def find_target_node(root: ast.Module, target_node_type, target_node_no) -> ast.AST | None:
+    """Find target node using ast.walk (same traversal as node_order generation)."""
+    expected_type = NODE_TYPE_TO_AST_NAME.get(target_node_type.value, target_node_type.value)
     
-    def generic_visit(self, node):
-        if self.found_node:
-            return
-        
+    type_order = {}
+    for node in ast.walk(root):
         typ = type(node).__name__
-
-        if typ not in self.type_order:
-            self.type_order[typ] = 1
+        
+        if typ not in type_order:
+            type_order[typ] = 1
         else:
-            self.type_order[typ] += 1
-
-        if typ == self.target_node_type.value and self.type_order[typ] == self.target_node_no:
-            self.found_node = node
-            return
-
-        super().generic_visit(node)
-
+            type_order[typ] += 1
+        
+        if typ == expected_type and type_order[typ] == target_node_no:
+            return node
+    
+    return None
 
 class CallRenamer(ast.NodeVisitor):
     """Rename function/method calls."""
@@ -204,6 +230,26 @@ class ArgumentReplacer(ast.NodeTransformer):
             return copy.deepcopy(self.param_to_arg[node.id])
         return node
 
+
+class FieldRenamer(ast.NodeTransformer):
+    """Rename variable/parameter within a function scope."""
+    
+    def __init__(self, old_name: str, new_name: str):
+        self.old_name = old_name
+        self.new_name = new_name
+    
+    def visit_Name(self, node: ast.Name) -> ast.Name:
+        """Rename variable references (both Load and Store)."""
+        if node.id == self.old_name:
+            node.id = self.new_name
+        return node
+    
+    def visit_arg(self, node: ast.arg) -> ast.arg:
+        """Rename function argument."""
+        if node.arg == self.old_name:
+            node.arg = self.new_name
+        return node
+    
 
 class InlineMethodTransformer(ast.NodeTransformer):
     """Replace function calls with inlined expression."""
@@ -447,16 +493,57 @@ class ExtractMethodHelper:
         return visitor.load_ids, visitor.store_ids
     
     @staticmethod
-    def get_required_params(target_nodes: list[ast.stmt], prev_nodes: list[ast.stmt]) -> list[str]:
+    def get_required_params(
+        target_nodes: list[ast.stmt], 
+        prev_nodes: list[ast.stmt],
+        enclosing_function: ast.FunctionDef | None
+    ) -> list[str]:
         """Get variables that need to be passed as parameters."""
         target_load, target_store = ExtractMethodHelper.get_used_variables(target_nodes)
         prev_load, prev_store = ExtractMethodHelper.get_used_variables(prev_nodes)
         
+        # 함수 파라미터도 사용 가능한 변수로 간주
+        func_params = set()
+        if enclosing_function:
+            for arg in enclosing_function.args.args:
+                if arg.arg != 'self':
+                    func_params.add(arg.arg)
+        
+        # target에서 load하는데, target 내부에서 store되지 않은 것
         external_deps = target_load - target_store
-        params = external_deps & prev_store
+        # 그 중 prev에서 store되었거나, 함수 파라미터인 것
+        params = external_deps & (prev_store | func_params)
         
         return sorted(list(params))
     
+    @staticmethod
+    def get_prev_stmts(
+        target_node: ast.AST,
+        attr_name: str,
+        start_idx: int,
+        enclosing_function: ast.FunctionDef | None
+    ) -> list[ast.stmt]:
+        """Get statements before the extraction target, including function body if needed."""
+        prev_stmts = []
+        
+        # target_node의 attr에서 idx 이전 statements
+        attr = getattr(target_node, attr_name)
+        prev_stmts.extend(attr[:start_idx])
+        
+        # target_node가 FunctionDef가 아니면, enclosing function의 body에서
+        # target_node 이전의 모든 statements도 포함
+        if enclosing_function and target_node is not enclosing_function:
+            for stmt in enclosing_function.body:
+                if stmt is target_node:
+                    break
+                prev_stmts.append(stmt)
+                # 중첩 구조에서 target_node를 포함하는 경우
+                for child in ast.walk(stmt):
+                    if child is target_node:
+                        break
+        
+        return prev_stmts
+
     @staticmethod
     def uses_self(nodes: list[ast.stmt]) -> bool:
         """Check if any node uses 'self'."""
@@ -538,10 +625,12 @@ class Applier:
         root = ast.parse(source_code)
         root_backup = copy.deepcopy(root)
 
-        finder = TargetNodeFinder(refactoring_operator.target_node_type, refactoring_operator.target_node_no)
-        finder.visit(root)
-
-        target_node = finder.found_node
+        # TargetNodeFinder 대신 ast.walk 기반 함수 사용
+        target_node = find_target_node(
+            root, 
+            refactoring_operator.target_node_type, 
+            refactoring_operator.target_node_no
+        )
 
         if target_node is None:
             raise ValueError(f"Target node not found: {refactoring_operator}")
@@ -556,7 +645,12 @@ class Applier:
                     root = root_backup
 
             case RefactoringOperatorType.RF:
-                pass
+                assert isinstance(refactoring_operator, RenameFieldOperator)
+                try:
+                    self._apply_rf(root, target_node, refactoring_operator)
+                except (TypeError, ValueError) as e:
+                    print(f"Error in applying RF: {e}")
+                    root = root_backup
 
             case RefactoringOperatorType.RC:
                 assert isinstance(refactoring_operator, ReverseConditionalExpressionOperator)
@@ -671,8 +765,57 @@ class Applier:
         ast.fix_missing_locations(root)
     
     @staticmethod
-    def _apply_rf():
-        pass
+    def _apply_rf(root, node, operator: RenameFieldOperator):
+        """Apply Rename Field refactoring."""
+        if not isinstance(node, ast.FunctionDef):
+            raise TypeError(f"Expected FunctionDef, got {type(node).__name__}")
+        
+        old_name = operator.old_name
+        new_name = operator.new_name
+        
+        if not old_name or not new_name:
+            raise ValueError("old_name and new_name must not be empty")
+        
+        if old_name == new_name:
+            raise ValueError("old_name and new_name must be different")
+        
+        # 1. 이름 충돌 체크 - 함수 내에서 new_name이 이미 사용되는지
+        visitor = StoreLoadVisitor()
+        visitor.visit(node)
+        existing_names = visitor.store_ids | visitor.load_ids
+        
+        # 함수 파라미터도 포함
+        for arg in node.args.args:
+            existing_names.add(arg.arg)
+        if node.args.vararg:
+            existing_names.add(node.args.vararg.arg)
+        if node.args.kwarg:
+            existing_names.add(node.args.kwarg.arg)
+        for arg in node.args.kwonlyargs:
+            existing_names.add(arg.arg)
+        
+        # old_name 제외하고 new_name이 있으면 충돌
+        existing_names.discard(old_name)
+        if new_name in existing_names:
+            raise ValueError(f"Name '{new_name}' already exists in function '{node.name}'")
+        
+        # 2. old_name이 실제로 함수 내에 존재하는지 확인
+        all_names = visitor.store_ids | visitor.load_ids
+        arg_names = {arg.arg for arg in node.args.args}
+        if node.args.vararg:
+            arg_names.add(node.args.vararg.arg)
+        if node.args.kwarg:
+            arg_names.add(node.args.kwarg.arg)
+        arg_names.update(arg.arg for arg in node.args.kwonlyargs)
+        
+        if old_name not in all_names and old_name not in arg_names:
+            raise ValueError(f"Name '{old_name}' not found in function '{node.name}'")
+        
+        # 3. 함수 내 모든 이름 변경
+        renamer = FieldRenamer(old_name, new_name)
+        renamer.visit(node)
+        
+        ast.fix_missing_locations(root)
     
     @staticmethod
     def _apply_rc(node):
@@ -796,9 +939,7 @@ class Applier:
         if not isinstance(node, ast.FunctionDef):
             raise TypeError(f"Expected FunctionDef, got {type(node).__name__}")
         
-        finder = TargetNodeFinder(operator.target_node_type, operator.reference_node_no)
-        finder.visit(root)
-        ref_node = finder.found_node
+        ref_node = find_target_node(root, operator.target_node_type, operator.reference_node_no)
        
         if not isinstance(ref_node, ast.FunctionDef):
             raise TypeError(f"Expected FunctionDef for reference, got {type(ref_node).__name__}")
@@ -811,85 +952,95 @@ class Applier:
         remove_function_from_scope(root, node, enclosing_class)
 
     def _apply_em(self, root, node, operator):
-        """Apply Extract Method (without return)."""
-        if not isinstance(node, ast.FunctionDef):
-            raise TypeError(f"Expected FunctionDef, got {type(node).__name__}")
-        
-        idx = operator.start_idx
-        length = operator.length
-        new_name = operator.new_name if operator.new_name != 'name' else f"extracted_{node.name}"
-        
-        body = node.body
-        
-        if idx + length > len(body):
-            raise ValueError("Invalid index or length for extraction")
-        
-        # 0. enclosing class 확인
-        enclosing_class = find_enclosing_class(root, node)
-        
-        # 1. 이름 충돌 체크
-        if check_name_conflict(root, new_name, enclosing_class):
-            raise ValueError(f"Function/method '{new_name}' already exists")
-        
-        # 2. 추출할 statements
-        target_stmts = body[idx:idx + length]
-        prev_stmts = body[:idx]
-        
-        # 3. 필요한 파라미터 계산
-        params = ExtractMethodHelper.get_required_params(target_stmts, prev_stmts)
-        
-        # 4. self 사용 여부 확인
-        uses_self = ExtractMethodHelper.uses_self(target_stmts)
-        include_self = enclosing_class is not None and uses_self
-        
-        # 5. 새 함수 생성
-        new_func = ExtractMethodHelper.create_function(
-            name=new_name,
-            params=params,
-            body=copy.deepcopy(target_stmts),
-            include_self=include_self
-        )
-        
-        # 6. 함수 호출 생성
-        call_expr = ast.Expr(
-            value=ExtractMethodHelper.create_call_expr(new_name, params, use_self=include_self)
-        )
-        
-        # 7. 원본 함수 수정
-        node.body = body[:idx] + [call_expr] + body[idx + length:]
-        
-        # 8. 새 함수 추가
-        insert_function_to_scope(root, new_func, node, enclosing_class, uses_self)
-        
-        ast.fix_missing_locations(root)
+            """Apply Extract Method (without return)."""
+            # 0. 기본 정보 추출
+            attr_name = get_attr_name_from_node_type(operator.target_node_type)
+            idx = operator.start_idx
+            length = operator.length
+            new_name = operator.new_name if operator.new_name != 'name' else "extracted"
+            
+            # 1. 대상 속성 확인
+            if not hasattr(node, attr_name):
+                raise ValueError(f"Node does not have attribute '{attr_name}'")
+            
+            body = getattr(node, attr_name)
+            
+            if idx + length > len(body):
+                raise ValueError("Invalid index or length for extraction")
+            
+            # 2. enclosing function/class 찾기
+            enclosing_function = find_enclosing_function(root, node)
+            assert enclosing_function
+            enclosing_class = find_enclosing_class(root, node)
+
+            # 3. 이름 충돌 체크
+            if check_name_conflict(root, new_name, enclosing_class):
+                raise ValueError(f"Function/method '{new_name}' already exists")
+            
+            # 4. 추출할 statements
+            target_stmts = body[idx:idx + length]
+            
+            # 5. 필요한 파라미터 계산
+            prev_stmts = ExtractMethodHelper.get_prev_stmts(node, attr_name, idx, enclosing_function)
+            params = ExtractMethodHelper.get_required_params(target_stmts, prev_stmts, enclosing_function)
+            
+            # 6. self 사용 여부 확인
+            uses_self = ExtractMethodHelper.uses_self(target_stmts)
+            include_self = enclosing_class is not None and uses_self
+
+            # 7. 새 함수 생성
+            new_func = ExtractMethodHelper.create_function(
+                name=new_name,
+                params=params,
+                body=copy.deepcopy(target_stmts),
+                include_self=include_self
+            )
+            
+            # 8. 함수 호출 생성
+            call_expr = ast.Expr(
+                value=ExtractMethodHelper.create_call_expr(new_name, params, use_self=include_self)
+            )
+            
+            # 9. 원본 body 수정
+            new_body = body[:idx] + [call_expr] + body[idx + length:]
+            setattr(node, attr_name, new_body)
+            
+            # 10. 새 함수 추가
+            insert_function_to_scope(root, new_func, enclosing_function, enclosing_class, node, uses_self)
+            
+            ast.fix_missing_locations(root)
 
     def _apply_emr(self, root, node, operator):
         """Apply Extract Method with Return."""
-        if not isinstance(node, ast.FunctionDef):
-            raise TypeError(f"Expected FunctionDef, got {type(node).__name__}")
-        
+        # 0. 기본 정보 추출
+        attr_name = get_attr_name_from_node_type(operator.target_node_type)
         idx = operator.start_idx
         length = operator.length
-        new_name = operator.new_name if operator.new_name != 'name' else f"extracted_{node.name}"
+        new_name = operator.new_name if operator.new_name != 'name' else "extracted"
         
-        body = node.body
+        # 1. 대상 속성 확인
+        if not hasattr(node, attr_name):
+            raise ValueError(f"Node does not have attribute '{attr_name}'")
+        
+        body = getattr(node, attr_name)
         
         if idx + length > len(body):
             raise ValueError("Invalid index or length for extraction")
         
-        # 0. enclosing class 확인
+        # 2. enclosing function/class 찾기
+        enclosing_function = find_enclosing_function(root, node)
+        assert enclosing_function
         enclosing_class = find_enclosing_class(root, node)
         
-        # 1. 이름 충돌 체크
+        # 3. 이름 충돌 체크
         if check_name_conflict(root, new_name, enclosing_class):
             raise ValueError(f"Function/method '{new_name}' already exists")
         
-        # 2. 추출할 statements
+        # 4. 추출할 statements
         target_stmts = body[idx:idx + length]
-        prev_stmts = body[:idx]
         last_stmt = target_stmts[-1]
         
-        # 3. 마지막 statement 타입에 따라 분기
+        # 5. 마지막 statement 타입에 따라 분기
         if isinstance(last_stmt, ast.Return):
             is_return_stmt = True
             return_var_name = None
@@ -909,33 +1060,34 @@ class Applier:
         else:
             raise ValueError(f"Last statement must be Assign, AugAssign, or Return, got {type(last_stmt).__name__}")
         
-        # 4. 필요한 파라미터 계산
-        params = ExtractMethodHelper.get_required_params(target_stmts, prev_stmts)
+        # 6. 필요한 파라미터 계산
+        prev_stmts = ExtractMethodHelper.get_prev_stmts(node, attr_name, idx, enclosing_function)
+        params = ExtractMethodHelper.get_required_params(target_stmts, prev_stmts, enclosing_function)
         
-        # 5. self 사용 여부 확인
+        # 7. self 사용 여부 확인
         uses_self = ExtractMethodHelper.uses_self(target_stmts)
         include_self = enclosing_class is not None and uses_self
         
-        # 6. 새 함수 body 생성
+        # 8. 새 함수 body 생성
         if is_return_stmt:
-            new_body = copy.deepcopy(target_stmts)
+            new_func_body = copy.deepcopy(target_stmts)
         else:
             assert return_var_name is not None
-            new_body = copy.deepcopy(target_stmts)
-            new_body.append(ast.Return(value=ast.Name(id=return_var_name, ctx=ast.Load())))
+            new_func_body = copy.deepcopy(target_stmts)
+            new_func_body.append(ast.Return(value=ast.Name(id=return_var_name, ctx=ast.Load())))
         
-        # 7. 새 함수 생성
+        # 9. 새 함수 생성
         new_func = ExtractMethodHelper.create_function(
             name=new_name,
             params=params,
-            body=new_body,
+            body=new_func_body,
             include_self=include_self
         )
         
-        # 8. 호출 expression 생성
+        # 10. 호출 expression 생성
         call_expr = ExtractMethodHelper.create_call_expr(new_name, params, use_self=include_self)
         
-        # 9. 호출부 statement 생성
+        # 11. 호출부 statement 생성
         if is_return_stmt:
             call_stmt = ast.Return(value=call_expr)
         else:
@@ -945,10 +1097,12 @@ class Applier:
                 value=call_expr
             )
         
-        # 10. 원본 함수 수정
-        node.body = body[:idx] + [call_stmt] + body[idx + length:]
+        # 12. 원본 body 수정
+        new_body = body[:idx] + [call_stmt] + body[idx + length:]
+        setattr(node, attr_name, new_body)
         
-        # 11. 새 함수 추가
-        insert_function_to_scope(root, new_func, node, enclosing_class, uses_self)
+        # 13. 새 함수 추가
+        insert_function_to_scope(root, new_func, enclosing_function, enclosing_class, node, uses_self)
         
         ast.fix_missing_locations(root)
+    
