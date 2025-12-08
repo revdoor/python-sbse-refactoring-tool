@@ -1,6 +1,19 @@
-def my_func(a, b, c):
-    if a % 2 == 0 and (b % 3 == 1 or c % 3 == 1):
-        return False
+def process(user, min_age):
+    if user.age >= min_age and user.is_active:
+        return "allowed"
+    return "denied"
 
-    v = a + b + c
-    return v % 5 == 0
+class Validator:
+    def __init__(self):
+        self.min_age = 18
+    
+    def check(self, user):
+        if user.age >= self.min_age and user.is_active:
+            return True
+        return False
+    
+class Calculator:
+    def compute(self, x, y):
+        if x > 0 and y > 0:
+            return x + y
+        return 0

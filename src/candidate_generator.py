@@ -76,6 +76,18 @@ class OrderVisitor(ast.NodeVisitor):
         super().generic_visit(node)
 
 
+class FunctionNodeCollector(ast.NodeVisitor):
+    """Collect FunctionDef nodes using NodeVisitor (same order as node_order)."""
+    
+    def __init__(self):
+        super().__init__()
+        self.function_nodes = []
+    
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.function_nodes.append(node)
+        self.generic_visit(node)
+
+
 class CandidateGenerator:
     @staticmethod
     def generate_candidates(source_code: str) -> Sequence[RefactoringOperator]:
@@ -282,13 +294,9 @@ class CandidateGenerator:
 
     @staticmethod
     def _get_function_nodes(root: ast.Module) -> list[ast.FunctionDef]:
-        function_nodes = []
-
-        for node in ast.walk(root):
-            if isinstance(node, ast.FunctionDef):
-                function_nodes.append(node)
-
-        return function_nodes
+        collector = FunctionNodeCollector()
+        collector.visit(root)
+        return collector.function_nodes
 
     @staticmethod
     def _generate_rdm_candidates(

@@ -2,6 +2,7 @@ from applier import Applier
 from candidate_generator import CandidateGenerator
 from type_enums import RefactoringOperatorType
 from pathlib import Path
+from refactoring_operator import RenameFieldOperator
 
 
 if __name__ == "__main__":
@@ -11,14 +12,16 @@ if __name__ == "__main__":
     applier = Applier()
 
     test_operators = [
-        RefactoringOperatorType.RC,
-        RefactoringOperatorType.CC,
-        RefactoringOperatorType.RNC,
-        RefactoringOperatorType.RM,
-        RefactoringOperatorType.IM,
-        RefactoringOperatorType.RDM,
-        RefactoringOperatorType.EM,
-        RefactoringOperatorType.EMR,
+        # RefactoringOperatorType.RC,
+        # RefactoringOperatorType.CC,
+        # RefactoringOperatorType.RNC,
+        # RefactoringOperatorType.RM,
+        # RefactoringOperatorType.IM,
+        # RefactoringOperatorType.RDM,
+        # RefactoringOperatorType.EM,
+        # RefactoringOperatorType.EMR,
+        # RefactoringOperatorType.RF,
+        RefactoringOperatorType.DC,
     ]
 
     for operator in test_operators:
@@ -41,8 +44,9 @@ if __name__ == "__main__":
         print(f">> Found {len(candidates)} candidates.")
 
         for i, candidate in enumerate(candidates):
-            if candidate.operator_type == RefactoringOperatorType.RM and i % 3 != 0:
-                continue
+            if candidate.operator_type in (RefactoringOperatorType.RM, RefactoringOperatorType.EM, RefactoringOperatorType.EMR, RefactoringOperatorType.RF, RefactoringOperatorType.DC):
+                if i % 3 != 0:
+                    continue
 
             print(f"\n>> Applying Candidate {i+1}/{len(candidates)}: {candidate}")
             
