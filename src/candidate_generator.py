@@ -250,7 +250,7 @@ class CandidateGenerator:
                     break
 
                 length += 1
-                cur_node = body[0]
+                cur_node = first_body
 
             if length >= 2:
                 no = node_order[node]
