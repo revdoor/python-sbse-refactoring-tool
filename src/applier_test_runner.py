@@ -3,6 +3,7 @@ from candidate_generator import CandidateGenerator
 from type_enums import RefactoringOperatorType
 from pathlib import Path
 from refactoring_operator import RenameFieldOperator
+from refactoring_operator import RenameFieldOperator
 
 
 if __name__ == "__main__":

@@ -1117,3 +1117,4 @@ class Applier:
         setattr(node, attr_name, body[:idx] + [call_stmt] + body[idx + length:])
         insert_function_to_scope(root, new_func, enclosing_function, enclosing_class, node, uses_self)
         ast.fix_missing_locations(root)
+
