@@ -140,7 +140,111 @@ class NSGARunner:
             self._print_generation_best(gen + 1, population)
 
         pareto_front = self._extract_pareto_front(population)
+
+        self._print_final_results(pareto_front)
+
         return pareto_front
+
+    def _print_final_results(self, pareto_front: List[Individual]) -> None:
+        if not pareto_front:
+            print("\n[Final Results] No solutions found in Pareto front.")
+            return
+
+        print("\n" + "=" * 80)
+        print("FINAL OPTIMIZATION RESULTS")
+        print("=" * 80)
+        print(f"Pareto Front Size: {len(pareto_front)}")
+        print("=" * 80)
+
+        best_by_metric = {
+            "Structural": min(pareto_front, key=lambda ind: ind.objectives[0] if ind.objectives else float('inf')),
+            "Cost": min(pareto_front, key=lambda ind: ind.objectives[1] if ind.objectives else float('inf')),
+            "Readability": min(pareto_front, key=lambda ind: ind.objectives[2] if ind.objectives else float('inf')),
+        }
+
+        printed_plans = set()
+
+        for metric_name, ind in best_by_metric.items():
+            plan_hash = hash(ind.plan)
+
+            print(f"\n{'─' * 80}")
+            print(f"🏆 BEST BY {metric_name.upper()} SCORE")
+            print(f"{'─' * 80}")
+
+            self._print_individual_detailed(ind)
+
+            if plan_hash in printed_plans:
+                print(f"\n[Code] (Same as above - already printed)")
+            else:
+                printed_plans.add(plan_hash)
+
+                transformed_code = self._apply_plan(ind.plan)
+                print(f"\n[Transformed Code]")
+                print("```python")
+                print(transformed_code)
+                print("```")
+
+        print(f"\n{'=' * 80}")
+        print("COMPARISON SUMMARY")
+        print("=" * 80)
+        self._print_comparison_summary(pareto_front)
+        print("=" * 80 + "\n")
+
+    def _print_individual_detailed(self, ind: Individual, indent: str = "") -> None:
+        if ind.objectives is None:
+            print(f"{indent}(not evaluated)")
+            return
+
+        structural, cost, neg_readability = ind.objectives
+        readability = -neg_readability  # 원래 값으로 복원
+
+        print(f"{indent}📊 Metrics:")
+        print(f"{indent}   • Structural Score: {structural:.4f}")
+        print(f"{indent}   • Cost Score: {cost:.4f}")
+        print(f"{indent}   • Readability Score: {readability:.4f}")
+        print(f"{indent}   • Number of Refactorings: {len(ind.plan.genes)}")
+
+        if ind.plan.genes:
+            print(f"{indent}🔧 Applied Refactorings:")
+            for i, gene in enumerate(ind.plan.genes, 1):
+                print(f"{indent}   {i}. {gene}")
+        else:
+            print(f"{indent}🔧 Applied Refactorings: None")
+
+    def _print_comparison_summary(self, pareto_front: List[Individual]) -> None:
+        original_metrics = self.metric_calculator.calculate_metric(self.source_code)
+        orig_cc, orig_sloc, orig_fan_in, orig_readability = original_metrics
+        orig_structural = self._structural_objective(orig_cc, orig_sloc)
+        orig_cost = self._cost_objective(orig_fan_in, RefactoringPlan(genes=[]))
+
+        print(f"\n📋 Original Code Metrics:")
+        print(f"   • Structural Score: {orig_structural:.4f}")
+        print(f"   • Cost Score: {orig_cost:.4f}")
+        print(f"   • Readability Score: {orig_readability:.4f}")
+
+        if pareto_front:
+            structural_scores = [ind.objectives[0] for ind in pareto_front if ind.objectives]
+            cost_scores = [ind.objectives[1] for ind in pareto_front if ind.objectives]
+            readability_scores = [-ind.objectives[2] for ind in pareto_front if ind.objectives]
+
+            print(f"\n📈 Pareto Front Ranges:")
+            print(f"   • Structural Score: {min(structural_scores):.4f} ~ {max(structural_scores):.4f}")
+            print(f"   • Cost Score: {min(cost_scores):.4f} ~ {max(cost_scores):.4f}")
+            print(f"   • Readability Score: {min(readability_scores):.4f} ~ {max(readability_scores):.4f}")
+
+            best_structural = min(structural_scores)
+            best_readability = max(readability_scores)
+
+            if orig_structural > 0:
+                structural_improvement = (orig_structural - best_structural) / orig_structural * 100
+                print(f"\n✨ Best Improvements:")
+                print(
+                    f"   • Structural: {structural_improvement:+.1f}% {'(improved)' if structural_improvement > 0 else '(worsened)'}")
+
+            if orig_readability > 0:
+                readability_improvement = (best_readability - orig_readability) / orig_readability * 100
+                print(
+                    f"   • Readability: {readability_improvement:+.1f}% {'(improved)' if readability_improvement > 0 else '(worsened)'}")
 
     def _print_generation_best(self, generation: int, population: List[Individual]) -> None:
         """
