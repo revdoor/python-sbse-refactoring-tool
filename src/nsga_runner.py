@@ -238,26 +238,21 @@ class NSGARunner:
             if orig_structural > 0:
                 structural_improvement = (orig_structural - best_structural) / orig_structural * 100
                 print(f"\n✨ Best Improvements:")
-                print(
-                    f"   • Structural: {structural_improvement:+.1f}% {'(improved)' if structural_improvement > 0 else '(worsened)'}")
+                result = '(improved)' if structural_improvement > 0 else '(worsened)'
+                print(f"   • Structural: {structural_improvement:+.1f}% {result}")
 
             if orig_readability > 0:
                 readability_improvement = (best_readability - orig_readability) / orig_readability * 100
-                print(
-                    f"   • Readability: {readability_improvement:+.1f}% {'(improved)' if readability_improvement > 0 else '(worsened)'}")
+                result = '(improved)' if readability_improvement > 0 else '(worsened)'
+                print(f"   • Readability: {readability_improvement:+.1f}% {result}")
 
     def _print_generation_best(self, generation: int, population: List[Individual]) -> None:
-        """
-        현재 세대의 최고 결과물을 메트릭과 함께 출력합니다.
-        """
         if not population:
             return
 
-        # Pareto front 추출
         fronts = self._non_dominated_sort(population)
         pareto_front = fronts[0] if fronts else []
 
-        # 각 목적함수별 최적 개체 찾기
         best_structural = min(population, key=lambda ind: ind.objectives[0] if ind.objectives else float('inf'))
         best_cost = min(population, key=lambda ind: ind.objectives[1] if ind.objectives else float('inf'))
         best_readability = min(population, key=lambda ind: ind.objectives[2] if ind.objectives else float('inf'))
@@ -276,7 +271,6 @@ class NSGARunner:
         print(f"\n[Best by Readability Score]")
         self._print_individual(best_readability)
 
-        # Pareto front 전체 출력 (상위 3개만)
         print(f"\n[Pareto Front (top 3)]")
         for i, ind in enumerate(pareto_front[:3]):
             print(f"  #{i + 1}:")
@@ -285,9 +279,6 @@ class NSGARunner:
         print(f"{'=' * 60}\n")
 
     def _print_individual(self, ind: Individual, indent: str = "  ") -> None:
-        """
-        개체의 정보를 출력합니다.
-        """
         if ind.objectives is None:
             print(f"{indent}(not evaluated)")
             return
@@ -300,7 +291,6 @@ class NSGARunner:
         print(f"{indent}Readability Score: {readability:.4f}")
         print(f"{indent}Num Refactorings: {len(ind.plan.genes)}")
 
-        # 적용된 리팩토링 연산자 목록
         if ind.plan.genes:
             gene_strs = [str(g) for g in ind.plan.genes]
             print(f"{indent}Operators: {', '.join(gene_strs)}")
