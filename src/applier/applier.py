@@ -198,6 +198,11 @@ class Applier:
         node.test = ast.UnaryOp(op=ast.Not(), operand=node.test)
         node.body, node.orelse = node.orelse, node.body
 
+        if len(node.body) == 0:
+            node.body.append(ast.Pass())
+        if len(node.orelse) == 1 and isinstance(node.orelse[0], ast.Pass):
+            node.orelse = []
+
     # =========================================================
     # Decompose Conditional (DC)
     # =========================================================
