@@ -1,6 +1,7 @@
 """
 Enumeration types for refactoring operators and AST node types.
 """
+import random
 from enum import Enum
 
 
@@ -15,6 +16,13 @@ class RefactoringOperatorType(Enum):
     EM = "ExtractMethod"
     EMR = "ExtractMethodWithReturn"
     RDM = "RemoveDuplicateMethod"
+
+    @staticmethod
+    def random(except_types: list[RefactoringOperatorType] = None):
+        if except_types is None:
+            except_types = []
+
+        return random.choice([typ for typ in RefactoringOperatorType if typ not in except_types])
 
     def uses_llm(self):
         return self in {
