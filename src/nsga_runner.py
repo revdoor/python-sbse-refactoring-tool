@@ -55,7 +55,7 @@ class NSGARunner:
     def __init__(
             self,
             source_code: str,
-            candidate_generator: Callable[[], RefactoringPlan],
+            candidate_generator: Callable[[str], RefactoringPlan],
             pop_size: int = 10,
             n_generations: int = 30,
             cx_prob: float = 0.7,
@@ -93,9 +93,8 @@ class NSGARunner:
           - build a candidate_generator() that samples random subsets of them
         """
         all_candidates: Sequence[RefactoringOperator] = CandidateGenerator.generate_candidates(source_code)
-        rnd = random.Random(random_seed)
 
-        def make_random_plan() -> RefactoringPlan:
+        def make_random_plan(source_code: str) -> RefactoringPlan:
             """
             Sample a random subset of the global candidate list.
 
@@ -103,13 +102,16 @@ class NSGARunner:
             - choose a random length in [1, min(5, len(all_candidates))]
             - sample without replacement
             """
-            if not all_candidates:
-                return RefactoringPlan(genes=[])
+            code = source_code
 
-            max_len = min(5, len(all_candidates))
-            length = rnd.randint(1, max_len)
-            genes = rnd.sample(list(all_candidates), length)
-            return RefactoringPlan(genes=genes)
+            operators = []
+            for repeat in range(random.randrange(5, 11)):
+                candidate = CandidateGenerator.get_random_candidate(code)
+                operators.append(candidate)
+
+                code = Applier.apply_refactoring(code, candidate)
+
+            return RefactoringPlan(genes=operators)
 
         return cls(
             source_code=source_code,
@@ -301,7 +303,7 @@ class NSGARunner:
         """
         pop: List[Individual] = []
         for _ in range(self.pop_size):
-            plan = self.candidate_generator()
+            plan = self.candidate_generator(self.source_code)
             pop.append(Individual(plan=plan))
         return pop
 
@@ -313,7 +315,7 @@ class NSGARunner:
         code = self.source_code
         for operator in plan.genes:
             try:
-                code = self.applier.apply_refactoring(code, operator)
+                code = Applier.apply_refactoring(code, operator)
             except (ValueError, TypeError) as e:
                 # Skip failed operators
                 pass
@@ -358,11 +360,11 @@ class NSGARunner:
         Cost / regularization objective: penalize many refactorings and high fan-in.
 
         For now:
-          cost = num_refactorings + beta * fan_in
+          cost = num_refactorings - beta * fan_in
         """
         beta = 0.1
         num_refactorings = len(plan.genes)
-        return float(num_refactorings) + beta * float(fan_in)
+        return float(num_refactorings) - beta * float(fan_in)
 
     def _make_offspring(self, population: List[Individual]) -> List[Individual]:
         """

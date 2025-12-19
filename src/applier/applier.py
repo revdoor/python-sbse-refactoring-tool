@@ -14,7 +14,6 @@ from .util_scope import (
     get_attr_name_from_node_type,
 )
 
-from type_enums import RefactoringOperatorType
 from refactoring_operator import (
     RefactoringOperator,
     InlineMethodOperator,
@@ -35,8 +34,8 @@ from helpers.store_load_visitor import StoreLoadVisitor
 class Applier:
     """Apply refactoring operators to Python source code."""
 
+    @staticmethod
     def apply_refactoring(
-            self,
             source_code: str,
             refactoring_operator: RefactoringOperator
     ) -> str:
@@ -63,7 +62,7 @@ class Applier:
             raise ValueError(f"Target node not found: {refactoring_operator}")
 
         try:
-            self._dispatch_operator(root, target_node, refactoring_operator)
+            Applier._dispatch_operator(root, target_node, refactoring_operator)
         except (TypeError, ValueError) as e:
             op_type = refactoring_operator.operator_type.name
             print(f"Error in applying {op_type}: {e}")
@@ -73,41 +72,47 @@ class Applier:
 
         return ast.unparse(root)
 
+    @staticmethod
     def _dispatch_operator(
-            self,
             root: ast.Module,
             target_node: ast.AST,
             operator: RefactoringOperator
     ) -> None:
         """Dispatch to the appropriate apply method based on operator type."""
-        dispatch_table = {
-            RefactoringOperatorType.RM: self._apply_rm,
-            RefactoringOperatorType.RF: self._apply_rf,
-            RefactoringOperatorType.RC: self._apply_rc,
-            RefactoringOperatorType.DC: self._apply_dc,
-            RefactoringOperatorType.CC: self._apply_cc,
-            RefactoringOperatorType.RNC: self._apply_rnc,
-            RefactoringOperatorType.IM: self._apply_im,
-            RefactoringOperatorType.RDM: self._apply_rdm,
-            RefactoringOperatorType.EM: self._apply_em,
-            RefactoringOperatorType.EMR: self._apply_emr,
-        }
-
-        handler = dispatch_table.get(operator.operator_type)
-        if handler:
-            handler(root, target_node, operator)
+        match operator:
+            case RenameMethodOperator():
+                Applier._apply_rm(root, target_node, operator)
+            case RenameFieldOperator():
+                Applier._apply_rf(root, target_node, operator)
+            case ReverseConditionalExpressionOperator():
+                Applier._apply_rc(root, target_node, operator)
+            case DecomposeConditionalOperator():
+                Applier._apply_dc(root, target_node, operator)
+            case ConsolidateConditionalExpressionOperator():
+                Applier._apply_cc(root, target_node, operator)
+            case ReplaceNestedConditionalOperator():
+                Applier._apply_rnc(root, target_node, operator)
+            case InlineMethodOperator():
+                Applier._apply_im(root, target_node, operator)
+            case RemoveDuplicateMethodOperator():
+                Applier._apply_rdm(root, target_node, operator)
+            case ExtractMethodOperator():
+                Applier._apply_em(root, target_node, operator)
+            case ExtractMethodWithReturnOperator():
+                Applier._apply_emr(root, target_node, operator)
 
     # =========================================================
     # Rename Method (RM)
     # =========================================================
 
-    def _apply_rm(self, root, node, operator: RenameMethodOperator):
-        self._rename_method(root, node, operator)
+    @staticmethod
+    def _apply_rm(root: ast.Module, node: ast.AST, operator: RenameMethodOperator):
+        Applier._rename_method(root, node, operator)
 
+    @staticmethod
     def _rename_method(
-            self,
-            root,
-            node,
+            root: ast.Module,
+            node: ast.AST,
             operator: RenameMethodOperator,
             ignore_conflict: bool = False
     ):
@@ -149,7 +154,8 @@ class Applier:
     # Rename Field (RF)
     # =========================================================
 
-    def _apply_rf(self, root, node, operator: RenameFieldOperator):
+    @staticmethod
+    def _apply_rf(root: ast.Module, node: ast.AST, operator: RenameFieldOperator):
         if not isinstance(node, ast.FunctionDef):
             raise TypeError(f"Expected FunctionDef, got {type(node).__name__}")
 
@@ -184,7 +190,8 @@ class Applier:
     # Reverse Conditional (RC)
     # =========================================================
 
-    def _apply_rc(self, root, node, operator: ReverseConditionalExpressionOperator):
+    @staticmethod
+    def _apply_rc(root: ast.Module, node: ast.AST, operator: ReverseConditionalExpressionOperator):
         if not isinstance(node, ast.If):
             raise TypeError(f"Expected ast.If, got {type(node).__name__}")
 
@@ -195,7 +202,8 @@ class Applier:
     # Decompose Conditional (DC)
     # =========================================================
 
-    def _apply_dc(self, root, node, operator: DecomposeConditionalOperator):
+    @staticmethod
+    def _apply_dc(root: ast.Module, node: ast.AST, operator: DecomposeConditionalOperator):
         if not isinstance(node, ast.If):
             raise TypeError(f"Expected ast.If, got {type(node).__name__}")
 
@@ -231,7 +239,8 @@ class Applier:
     # Consolidate Conditional (CC)
     # =========================================================
 
-    def _apply_cc(self, root, node, operator: ConsolidateConditionalExpressionOperator):
+    @staticmethod
+    def _apply_cc(root: ast.Module, node: ast.AST, operator: ConsolidateConditionalExpressionOperator):
         if not isinstance(node, ast.If):
             raise TypeError(f"Expected ast.If, got {type(node).__name__}")
 
@@ -262,7 +271,8 @@ class Applier:
     # Replace Nested Conditional (RNC)
     # =========================================================
 
-    def _apply_rnc(self, root, node, operator: ReplaceNestedConditionalOperator):
+    @staticmethod
+    def _apply_rnc(root: ast.Module, node: ast.AST, operator: ReplaceNestedConditionalOperator):
         if not isinstance(node, ast.If):
             raise TypeError(f"Expected ast.If, got {type(node).__name__}")
 
@@ -292,7 +302,8 @@ class Applier:
     # Inline Method (IM)
     # =========================================================
 
-    def _apply_im(self, root, node, operator: InlineMethodOperator):
+    @staticmethod
+    def _apply_im(root: ast.Module, node: ast.AST, operator: InlineMethodOperator):
         if not isinstance(node, ast.FunctionDef):
             raise TypeError(f"Expected FunctionDef, got {type(node).__name__}")
 
@@ -331,7 +342,8 @@ class Applier:
     # Remove Duplicate Method (RDM)
     # =========================================================
 
-    def _apply_rdm(self, root, node, operator: RemoveDuplicateMethodOperator):
+    @staticmethod
+    def _apply_rdm(root: ast.Module, node: ast.AST, operator: RemoveDuplicateMethodOperator):
         if not isinstance(node, ast.FunctionDef):
             raise TypeError(f"Expected FunctionDef, got {type(node).__name__}")
 
@@ -346,7 +358,7 @@ class Applier:
             target_node_no=operator.target_node_no,
             new_name=ref_node.name
         )
-        self._rename_method(root, node, rm_operator, ignore_conflict=True)
+        Applier._rename_method(root, node, rm_operator, ignore_conflict=True)
 
         enclosing_class = find_enclosing_class(root, node)
         remove_function_from_scope(root, node, enclosing_class)
@@ -355,7 +367,8 @@ class Applier:
     # Extract Method (EM)
     # =========================================================
 
-    def _apply_em(self, root, node, operator: ExtractMethodOperator):
+    @staticmethod
+    def _apply_em(root: ast.Module, node: ast.AST, operator: ExtractMethodOperator):
         attr_name = get_attr_name_from_node_type(operator.target_node_type)
         idx, length = operator.start_idx, operator.length
         assert idx is not None and length is not None
@@ -403,7 +416,8 @@ class Applier:
     # Extract Method with Return (EMR)
     # =========================================================
 
-    def _apply_emr(self, root, node, operator: ExtractMethodWithReturnOperator):
+    @staticmethod
+    def _apply_emr(root: ast.Module, node: ast.AST, operator: ExtractMethodWithReturnOperator):
         attr_name = get_attr_name_from_node_type(operator.target_node_type)
         idx, length = operator.start_idx, operator.length
         assert idx is not None and length is not None

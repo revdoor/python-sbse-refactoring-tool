@@ -5,6 +5,7 @@ for the given source code.
 """
 
 import ast
+import random
 from collections.abc import Sequence
 
 from type_enums import RefactoringOperatorType, NodeType
@@ -101,6 +102,22 @@ class CandidateGenerator:
     ) -> Sequence[RefactoringOperator]:
         root, node_order = CandidateGenerator._parse_and_order(source_code)
         return CandidateGenerator._generate_candidates_by_operator(root, node_order, operator)
+
+    @staticmethod
+    def get_random_candidate(source_code: str):
+        print(source_code)
+        tried_operator = []
+
+        while len(tried_operator) < len(RefactoringOperatorType):
+            operator = RefactoringOperatorType.random(tried_operator)
+            candidates = CandidateGenerator.generate_candidates_by_operator(source_code, operator)
+
+            if not candidates:
+                tried_operator.append(operator)
+            else:
+                return random.choice(candidates)
+
+        return None
 
     @staticmethod
     def _generate_candidates_by_operator(
