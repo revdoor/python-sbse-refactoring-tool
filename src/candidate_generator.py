@@ -105,7 +105,6 @@ class CandidateGenerator:
 
     @staticmethod
     def get_random_candidate(source_code: str):
-        print(source_code)
         tried_operator = []
 
         while len(tried_operator) < len(RefactoringOperatorType):
