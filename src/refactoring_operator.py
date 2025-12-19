@@ -3,9 +3,17 @@ This module defines the RefactoringOperator class,
 which are used to represent various refactoring operators that can be used
 in SBSE process.
 """
-
-from abc import ABC
+import random
+from abc import ABC, abstractmethod
 from type_enums import RefactoringOperatorType, NodeType
+
+
+def get_random_difference():
+    return random.choice([-1, 0, 1])
+
+
+def get_random_indicator(length):
+    return random.randrange(1, length+1)
 
 
 class RefactoringOperator(ABC):
@@ -29,6 +37,10 @@ class RefactoringOperator(ABC):
         self.new_name = new_name
         self.reference_node_no = reference_node_no
         self.start_idx = start_idx
+
+    @abstractmethod
+    def create_mutant(self):
+        raise NotImplementedError
 
     def __str__(self):
         var_strs = [f"target={self.target_node_type.value}[{self.target_node_no}]"]
@@ -98,6 +110,24 @@ class ExtractMethodOperator(RefactoringOperator):
             start_idx=start_idx
         )
 
+    def create_mutant(self):
+        new_node_type = self.target_node_type
+        new_node_no = self.target_node_no
+        new_start_idx = self.start_idx
+        new_length = self.length
+
+        match get_random_indicator(4):
+            case 1:
+                new_node_type += get_random_difference()
+            case 2:
+                new_node_no += get_random_difference()
+            case 3:
+                new_start_idx += get_random_difference()
+            case 4:
+                new_length += get_random_difference()
+
+        return ExtractMethodOperator(new_node_type, new_node_no, new_start_idx, new_length, self.new_name)
+
 
 class ExtractMethodWithReturnOperator(RefactoringOperator):
     def __init__(self, target_node_typ, target_node_no, start_idx, length, new_name):
@@ -117,6 +147,24 @@ class ExtractMethodWithReturnOperator(RefactoringOperator):
             start_idx=start_idx
         )
 
+    def create_mutant(self):
+        new_node_type = self.target_node_type
+        new_node_no = self.target_node_no
+        new_start_idx = self.start_idx
+        new_length = self.length
+
+        match get_random_indicator(4):
+            case 1:
+                new_node_type += get_random_difference()
+            case 2:
+                new_node_no += get_random_difference()
+            case 3:
+                new_start_idx += get_random_difference()
+            case 4:
+                new_length += get_random_difference()
+
+        return ExtractMethodWithReturnOperator(new_node_type, new_node_no, new_start_idx, new_length, self.new_name)
+
 
 class RemoveDuplicateMethodOperator(RefactoringOperator):
     def __init__(self, target_node_no, reference_node_no):
@@ -127,6 +175,18 @@ class RemoveDuplicateMethodOperator(RefactoringOperator):
             reference_node_no=reference_node_no
         )
 
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+        new_reference_node_no = self.reference_node_no
+
+        match get_random_indicator(2):
+            case 1:
+                new_node_no += get_random_difference()
+            case 2:
+                new_reference_node_no += get_random_difference()
+
+        return RemoveDuplicateMethodOperator(new_node_no, new_reference_node_no)
+
 
 class RenameMethodOperator(RefactoringOperator):
     def __init__(self, target_node_no, new_name):
@@ -136,6 +196,13 @@ class RenameMethodOperator(RefactoringOperator):
             target_node_no=target_node_no,
             new_name=new_name
         )
+
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+
+        new_node_no += get_random_difference()
+
+        return DecomposeConditionalOperator(new_node_no, self.new_name)
 
 
 class RenameFieldOperator(RefactoringOperator):
@@ -148,6 +215,13 @@ class RenameFieldOperator(RefactoringOperator):
             new_name=new_name
         )
 
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+
+        new_node_no += get_random_difference()
+
+        return RenameFieldOperator(new_node_no, self.old_name, self.new_name)
+
 
 class DecomposeConditionalOperator(RefactoringOperator):
     def __init__(self, target_node_no, new_name):
@@ -157,6 +231,13 @@ class DecomposeConditionalOperator(RefactoringOperator):
             target_node_no=target_node_no,
             new_name=new_name
         )
+
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+
+        new_node_no += get_random_difference()
+
+        return DecomposeConditionalOperator(new_node_no, self.new_name)
 
 
 class ReplaceNestedConditionalOperator(RefactoringOperator):
@@ -168,6 +249,18 @@ class ReplaceNestedConditionalOperator(RefactoringOperator):
             length=length
         )
 
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+        new_length = self.length
+
+        match get_random_indicator(2):
+            case 1:
+                new_node_no += get_random_difference()
+            case 2:
+                new_length += get_random_difference()
+
+        return ReplaceNestedConditionalOperator(new_node_no, new_length)
+
 
 class InlineMethodOperator(RefactoringOperator):
     def __init__(self, target_node_no):
@@ -176,6 +269,13 @@ class InlineMethodOperator(RefactoringOperator):
             target_node_type=NodeType.FunctionDef,
             target_node_no=target_node_no
         )
+
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+
+        new_node_no += get_random_difference()
+
+        return InlineMethodOperator(new_node_no)
 
 
 class ConsolidateConditionalExpressionOperator(RefactoringOperator):
@@ -187,6 +287,18 @@ class ConsolidateConditionalExpressionOperator(RefactoringOperator):
             length=length
         )
 
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+        new_length = self.length
+
+        match get_random_indicator(2):
+            case 1:
+                new_node_no += get_random_difference()
+            case 2:
+                new_length += get_random_difference()
+
+        return ConsolidateConditionalExpressionOperator(new_node_no, new_length)
+
 
 class ReverseConditionalExpressionOperator(RefactoringOperator):
     def __init__(self, target_node_no):
@@ -195,3 +307,10 @@ class ReverseConditionalExpressionOperator(RefactoringOperator):
             target_node_type=NodeType.If,
             target_node_no=target_node_no
         )
+
+    def create_mutant(self):
+        new_node_no = self.target_node_no
+
+        new_node_no += get_random_difference()
+
+        return ReverseConditionalExpressionOperator(new_node_no)
