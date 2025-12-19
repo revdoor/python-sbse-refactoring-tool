@@ -358,11 +358,11 @@ class NSGARunner:
         Cost / regularization objective: penalize many refactorings and high fan-in.
 
         For now:
-          cost = num_refactorings + beta * fan_in
+          cost = num_refactorings - beta * fan_in
         """
         beta = 0.1
         num_refactorings = len(plan.genes)
-        return float(num_refactorings) + beta * float(fan_in)
+        return float(num_refactorings) - beta * float(fan_in)
 
     def _make_offspring(self, population: List[Individual]) -> List[Individual]:
         """
