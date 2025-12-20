@@ -379,8 +379,8 @@ class NSGARunner:
         offspring: List[Individual] = []
 
         while len(offspring) < self.pop_size:
-            parent1 = self._tournament_select(population)
-            parent2 = self._tournament_select(population)
+            parent1 = self._random_select(population)
+            parent2 = self._random_select(population)
 
             child1_plan = self._clone_plan(parent1.plan)
             child2_plan = self._clone_plan(parent2.plan)
@@ -403,18 +403,11 @@ class NSGARunner:
     def _clone_plan(self, plan: RefactoringPlan) -> RefactoringPlan:
         return RefactoringPlan(genes=list(plan.genes))
 
-    def _tournament_select(self, population: List[Individual], k: int = 2) -> Individual:
+    def _random_select(self, population: List[Individual], k: int = 2) -> Individual:
         """
         Binary tournament based on Pareto rank then crowding distance.
         """
-        candidates = self.random.sample(population, k)
-
-        def key(ind: Individual):
-            if ind.rank is None:
-                return (0, ind.objectives[0] if ind.objectives is not None else float("inf"))
-            return (ind.rank, -ind.crowding_distance)
-
-        return min(candidates, key=key)
+        return random.choice(population)
 
     def _crossover(
             self,
