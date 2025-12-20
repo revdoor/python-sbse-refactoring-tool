@@ -441,7 +441,7 @@ class NSGARunner:
 
         if self.random.random() < 0.5:
             idx = self.random.randrange(len(genes))
-            del genes[idx]
+            plan.genes.pop(idx)
         else:
             if self.candidate_pool:
                 new_gene = self.random.choice(self.candidate_pool)
