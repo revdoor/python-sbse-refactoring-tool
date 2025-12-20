@@ -26,6 +26,9 @@ class RefactoringPlan:
     def __hash__(self):
         return hash(tuple(self.genes))
 
+    def is_empty(self):
+        return len(self.genes) == 0
+
 
 @dataclass
 class Individual:
@@ -41,6 +44,9 @@ class Individual:
 
     def __hash__(self):
         return hash(self.plan)
+
+    def is_empty(self):
+        return self.plan.is_empty()
 
 
 class NSGARunner:
@@ -387,8 +393,9 @@ class NSGARunner:
             if self.random.random() < self.mut_prob:
                 child2_plan = self._mutate(child2_plan)
 
-            offspring.append(Individual(plan=child1_plan))
-            if len(offspring) < self.pop_size:
+            if not child1_plan.is_empty():
+                offspring.append(Individual(plan=child1_plan))
+            if not child2_plan.is_empty() and len(offspring) < self.pop_size:
                 offspring.append(Individual(plan=child2_plan))
 
         return offspring
