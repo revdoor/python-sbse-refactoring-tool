@@ -2,24 +2,43 @@
 
 ## Overview
 
-This repository is a refactoring tool for Python codes.
-This tool uses search-based software engineering (SBSE) to find the possible refactorings that improves the code quality.
+A refactoring tool for Python code using search-based software engineering (SBSE).
+Uses NSGA-II genetic algorithm to find refactoring sequences that improve code quality across multiple objectives.
 
-## Methodology
+## Architecture
 
-TBD
+| Module | Description |
+|--------|-------------|
+| Candidate Generator | Detects valid refactoring opportunities via AST analysis |
+| Applier | Applies refactoring operators to AST while preserving behavior |
+| Metric Calculator | Computes structural and semantic quality metrics |
+| NSGA-II Runner | Evolves refactoring sequences via multi-objective optimization |
+
+## Refactoring Operators
+
+- Inline Method (IM)
+- Decompose Conditional (DC)
+- Reverse Conditional Expression (RC)
+- Consolidate Conditional Expression (CC)
+- Replace Nested Conditional (RNC)
+- Rename Method / Rename Field (RM, RF)
+- Extract Method (EM / EMR)
+- Remove Duplicate Method (RDM)
 
 ## Metrics
 
-TBD
+- **Structural:** Cyclomatic complexity, SLOC, Fan-in
+- **Cost:** Number of refactorings
+- **Semantic:** LLM-based readability score (local LLM)
 
 ## Requirements
 
-TBD
+- Python 3.10+
+- ollama
 
-## Usage
+## References
 
-TBD
+Based on methodologies from Ouni et al. (CSMR 2013) and Fakhoury et al. (ICPC 2019).
 
 ## ETC
 
